@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import ctypes
+import hashlib
 import json
 import platform
 import shutil
@@ -101,7 +102,7 @@ except ImportError:
     def ensure_dir_case_sensitive(*x):
         print(f'Cannot sensitive {x}, Not Supported')
 
-elocal = utils.e_local
+cwd_path = utils.prog_path
 
 
 class States:
@@ -136,7 +137,7 @@ class JsonEdit:
         self.write(data)
 
 
-class LoadCar:
+class LoadAnim:
     gifs = []
 
     def __init__(self):
@@ -210,7 +211,7 @@ class LoadCar:
         return call_func
 
 
-cartoon = LoadCar()
+animation = LoadAnim()
 
 
 class DevNull:
@@ -260,8 +261,10 @@ class ToolBox(ttk.Frame):
     def gui(self):
         self.pack_basic()
         """"""
-        ttk.Button(self.label_frame, text='1').grid(row=0, column=0, padx=5, pady=5)
-        ttk.Button(self.label_frame, text='2').grid(row=0, column=1, padx=5, pady=5)
+        ttk.Button(self.label_frame, text=lang.text114, command=lambda: cz(download_file)).grid(row=0, column=0, padx=5,
+                                                                                                pady=5)
+        ttk.Button(self.label_frame, text=lang.t59, command=self.GetFileInfo).grid(row=0, column=1, padx=5,
+                                                                                          pady=5)
         ttk.Button(self.label_frame, text='3').grid(row=0, column=2, padx=5, pady=5)
         ttk.Button(self.label_frame, text='4').grid(row=0, column=3, padx=5, pady=5)
         """"""
@@ -270,6 +273,76 @@ class ToolBox(ttk.Frame):
     def update_ui(self):
         self.label_frame.update_idletasks()
         self.canvas.config(scrollregion=self.canvas.bbox('all'), highlightthickness=0)
+
+    class GetFileInfo(Toplevel):
+        def __init__(self):
+            super().__init__()
+            self.title(lang.t59)
+            self.controls = []
+            self.gui()
+            self.geometry("400x450")
+            self.resizable(False, False)
+            jzxs(self)
+
+        def gui(self):
+            a = ttk.LabelFrame(self, text='Drop')
+            (tl := ttk.Label(a, text="Drop File Here\nOr Click It To Choose File")).pack(fill=BOTH, padx=5, pady=5)
+            tl.bind('<Button-1>', lambda *x: self.dnd([filedialog.askopenfilename()]))
+            a.pack(side=TOP, padx=5, pady=5, fill=BOTH)
+            windnd.hook_dropfiles(a, self.dnd)
+            self.b = ttk.LabelFrame(self, text='INFO')
+            self.b.pack(fill=BOTH, side=TOP)
+
+        def put_info(self, name, value):
+            f = Frame(self.b)
+            self.controls.append(f)
+            ttk.Label(f, text=f"{name}:", width=7).pack(fill=X, side='left')
+            f_e = ttk.Entry(f)
+            f_e.insert(0, value)
+            f_e.pack(fill=X, side='left', padx=5, pady=5, expand=True)
+            f_b = ttk.Button(f, text="复制")
+            f_b.configure(command=lambda e=f_e, b=f_b: self.copy_to_clipboard(e.get(), b))
+            f_b.pack(fill=X, side='left', padx=5, pady=5)
+            f.pack(fill=X)
+
+        @staticmethod
+        def copy_to_clipboard(value, b: ttk.Button):
+            b.configure(text="已复制", state='disabled')
+            win.clipboard_clear()
+            win.clipboard_append(value)
+            b.after(1500, lambda: b.configure(text="复制", state='normal'))
+
+        def clear(self):
+            for i in self.controls:
+                try:
+                    i.destroy()
+                except:
+                    pass
+
+        def dnd(self, file_list: list):
+            cz(self.__dnd, file_list)
+
+        def __dnd(self, file_list: list):
+            self.clear()
+            self.lift()
+            self.focus_force()
+            file = file_list[0]
+            if isinstance(file, bytes):
+                try:
+                    file = file_list[0].decode('utf-8')
+                except:
+                    file = file_list[0].decode('gbk')
+            if not os.path.isfile(file) or not file:
+                self.put_info('Warn', 'Please Select A File')
+                return
+            self.put_info("Name", os.path.basename(file))
+            self.put_info("Path", file)
+            self.put_info("Type", gettype(file))
+            self.put_info("Size", hum_convert(os.path.getsize(file)))
+            self.put_info("Size(B)", os.path.getsize(file))
+            self.put_info("Time", time.ctime(os.path.getctime(file)))
+            self.put_info("MD5", calculate_md5_file(file))
+            self.put_info("SHA256", calculate_sha256_file(file))
 
 
 class Tool(Tk):
@@ -358,8 +431,8 @@ class Tool(Tk):
         self.frame_bg = ttk.Frame(self.canvas1)
         self.canvas1.create_window((0, 0), window=self.frame_bg, anchor='nw')
         self.canvas1.config(highlightthickness=0)
-        self.tab4_n()
-        self.tab6_n()
+        self.tab4_content()
+        self.tab6_content()
         self.setting_tab()
         self.notepad.pack(fill=BOTH, expand=True)
         self.rzf = ttk.Frame(self.sub_win3)
@@ -388,9 +461,6 @@ class Tool(Tk):
         self.rzf.pack(padx=5, pady=5, fill=BOTH, side='bottom')
         sys.stdout = StdoutRedirector(self.show)
         sys.stderr = StdoutRedirector(self.show, error_=True)
-        zyf1 = ttk.LabelFrame(self.tab, text=lang.text9)
-        zyf1.pack(padx=10, pady=10)
-        ttk.Button(zyf1, text=lang.text114, command=lambda: cz(download_file)).pack(side='left', padx=10, pady=10)
         Label(self.tab,
               text='解锁BL是用户的权力！反对禁止限制解锁BL!\nUnlocking BL is user\'s right! We oppose the ban on BL unlocking!',
               font=(None, 10)).pack(
@@ -407,14 +477,14 @@ class Tool(Tk):
         self.gif_label.pack(padx=10, pady=10)
         MpkMan().gui()
 
-    def tab6_n(self):
+    def tab6_content(self):
         ttk.Label(self.tab6, text=lang.toolbox, font=(None, 20)).pack(padx=10, pady=10, fill=BOTH)
         ttk.Separator(self.tab6, orient=HORIZONTAL).pack(padx=10, pady=10, fill=X)
         tool_box = ToolBox(self.tab6)
         tool_box.gui()
         tool_box.pack(fill=BOTH, expand=True)
 
-    def tab4_n(self):
+    def tab4_content(self):
         self.rotate_angle = 0
         debugger_num = 0
 
@@ -496,7 +566,7 @@ class Tool(Tk):
         ttk.Label(sf2, text=lang.lang).pack(side='left', padx=10, pady=10)
         lb3 = ttk.Combobox(sf2, state='readonly', textvariable=language,
                            values=[str(i.rsplit('.', 1)[0]) for i in
-                                   os.listdir(elocal + os.sep + "bin" + os.sep + "languages")])
+                                   os.listdir(cwd_path + os.sep + "bin" + os.sep + "languages")])
         ai = StringVar(value=settings.ai_engine)
         treff = StringVar(value=settings.treff)
         auto_rm_pay = StringVar(value=settings.rm_pay)
@@ -504,7 +574,7 @@ class Tool(Tk):
         New_Project_Structure = StringVar(value=settings.nps)
         ai.trace("w", lambda *x: settings.set_value('ai_engine', ai.get()))
         treff.trace("w", lambda *x: settings.set_value('treff', treff.get()))
-        ttk.Button(sf4, text=lang.t38, command=Upgrade).pack(padx=10, pady=10, fill=X)
+        ttk.Button(sf4, text=lang.t38, command=Updater).pack(padx=10, pady=10, fill=X)
 
         def enable_contextpatch():
             if context.get() == '1':
@@ -524,9 +594,10 @@ class Tool(Tk):
         ttk.Checkbutton(sf4, text=lang.ai_engine, variable=ai, onvalue='1',
                         offvalue='0',
                         style="Toggle.TButton").pack(padx=10, pady=10, fill=X)
-        ttk.Checkbutton(sf4, text='Transparent effect', variable=treff, onvalue='1',
-                        offvalue='0',
-                        style="Toggle.TButton").pack(padx=10, pady=10, fill=X)
+        if os.name == 'nt':
+            ttk.Checkbutton(sf4, text='Transparent effect', variable=treff, onvalue='1',
+                            offvalue='0',
+                            style="Toggle.TButton").pack(padx=10, pady=10, fill=X)
         # ttk.Checkbutton(sf4, text="新项目结构", variable=New_Project_Structure, onvalue='1',
         #             offvalue='0',
         #           style="Toggle.TButton").pack(padx=10, pady=10, fill=X)
@@ -552,7 +623,7 @@ dn = utils.project_name = StringVar()
 theme = StringVar()
 language = StringVar()
 tool_self = os.path.normpath(os.path.abspath(sys.argv[0]))
-tool_bin = os.path.join(elocal, 'bin', platform.system(), platform.machine()) + os.sep
+tool_bin = os.path.join(cwd_path, 'bin', platform.system(), platform.machine()) + os.sep
 states = States()
 
 # Some Functions for Upgrade
@@ -572,7 +643,7 @@ else:
         os.kill(pid, 9)
 
 
-class Upgrade(Toplevel):
+class Updater(Toplevel):
 
     def __init__(self):
         if states.update_window:
@@ -689,14 +760,14 @@ class Upgrade(Toplevel):
         self.notice.configure(text=lang.t50, foreground='red')
 
     def download(self):
-        if not os.path.exists(os.path.join(elocal, "bin", "temp")):
-            os.makedirs(os.path.join(elocal, "bin", "temp"))
+        if not os.path.exists(os.path.join(cwd_path, "bin", "temp")):
+            os.makedirs(os.path.join(cwd_path, "bin", "temp"))
         mode = True
         self.progressbar.configure(mode='indeterminate')
         self.progressbar.start()
         self.update_zip = os.path.normpath(
-            os.path.join(elocal, "bin", "temp", os.path.basename(self.update_download_url)))
-        for percentage, _, _, _, _ in download_api(self.update_download_url, os.path.join(elocal, "bin", "temp"),
+            os.path.join(cwd_path, "bin", "temp", os.path.basename(self.update_download_url)))
+        for percentage, _, _, _, _ in download_api(self.update_download_url, os.path.join(cwd_path, "bin", "temp"),
                                                    size_=self.update_size):
             if not states.update_window:
                 return
@@ -714,24 +785,25 @@ class Upgrade(Toplevel):
         [terminate_process(i) for i in states.open_pids]
         if os.path.exists(tool_self):
             shutil.copy(tool_self,
-                        os.path.normpath(os.path.join(elocal, "upgrade" + ('' if os.name != 'nt' else '.exe'))))
+                        os.path.normpath(os.path.join(cwd_path, "upgrade" + ('' if os.name != 'nt' else '.exe'))))
             self.notice.configure(text=lang.t51)
             with zipfile.ZipFile(self.update_zip, 'r') as zip_ref:
                 for file in zip_ref.namelist():
                     if file != ('tool' + ('' if os.name == 'posix' else '.exe')):
-                        zip_ref.extract(file, elocal)
+                        zip_ref.extract(file, cwd_path)
                     else:
-                        zip_ref.extract(file, os.path.join(elocal, "bin"))
+                        zip_ref.extract(file, os.path.join(cwd_path, "bin"))
             update_dict = {
                 'updating': '1',
                 'language': settings.language,
                 'oobe': settings.oobe,
-                'new_tool': os.path.join(elocal, "bin", "tool" + ('' if os.name != 'nt' else '.exe'))
+                'new_tool': os.path.join(cwd_path, "bin", "tool" + ('' if os.name != 'nt' else '.exe'))
             }
             for i in update_dict.keys():
                 settings.set_value(i, update_dict.get(i, ''))
-            subprocess.Popen([os.path.normpath(os.path.join(elocal, "upgrade" + ('' if os.name != 'nt' else '.exe')))],
-                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.Popen(
+                [os.path.normpath(os.path.join(cwd_path, "upgrade" + ('' if os.name != 'nt' else '.exe')))],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             terminate_process(os.getpid())
         else:
             self.notice.configure(text=lang.t41, foreground='red')
@@ -741,9 +813,9 @@ class Upgrade(Toplevel):
         self.notice.configure(text=lang.t51)
         if os.path.exists(settings.new_tool):
             shutil.copyfile(settings.new_tool,
-                            os.path.normpath(os.path.join(elocal, "tool" + ('' if os.name != 'nt' else '.exe'))))
+                            os.path.normpath(os.path.join(cwd_path, "tool" + ('' if os.name != 'nt' else '.exe'))))
             settings.set_value('updating', '2')
-            subprocess.Popen([os.path.normpath(os.path.join(elocal, "tool" + ('' if os.name != 'nt' else '.exe')))],
+            subprocess.Popen([os.path.normpath(os.path.join(cwd_path, "tool" + ('' if os.name != 'nt' else '.exe')))],
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             terminate_process(os.getpid())
         else:
@@ -756,16 +828,16 @@ class Upgrade(Toplevel):
             try:
                 if os.path.isfile(settings.new_tool):
                     os.remove(settings.new_tool)
-                if os.path.isfile(os.path.join(elocal, "upgrade" + ('' if os.name != 'nt' else '.exe'))):
-                    os.remove(os.path.normpath(os.path.join(elocal, "upgrade" + ('' if os.name != 'nt' else '.exe'))))
-                if os.path.exists(os.path.join(elocal, "bin", "temp")):
-                    shutil.rmtree(os.path.join(elocal, "bin", "temp"))
-                os.makedirs(os.path.join(elocal, "bin", "temp"), exist_ok=True)
+                if os.path.isfile(os.path.join(cwd_path, "upgrade" + ('' if os.name != 'nt' else '.exe'))):
+                    os.remove(os.path.normpath(os.path.join(cwd_path, "upgrade" + ('' if os.name != 'nt' else '.exe'))))
+                if os.path.exists(os.path.join(cwd_path, "bin", "temp")):
+                    shutil.rmtree(os.path.join(cwd_path, "bin", "temp"))
+                os.makedirs(os.path.join(cwd_path, "bin", "temp"), exist_ok=True)
             except (IOError, IsADirectoryError, FileNotFoundError, PermissionError) as e:
                 print(e)
             settings.set_value('updating', '')
             settings.set_value('new_tool', '')
-            subprocess.Popen([os.path.normpath(os.path.join(elocal, "tool" + ('' if os.name != 'nt' else '.exe')))],
+            subprocess.Popen([os.path.normpath(os.path.join(cwd_path, "tool" + ('' if os.name != 'nt' else '.exe')))],
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             terminate_process(os.getpid())
         else:
@@ -855,7 +927,7 @@ class Welcome(ttk.Frame):
         ttk.Separator(self.frame, orient=HORIZONTAL).pack(padx=10, pady=10, fill=X)
         lb3_ = ttk.Combobox(self.frame, state='readonly', textvariable=language,
                             values=[i.rsplit('.', 1)[0] for i in
-                                    os.listdir(elocal + os.sep + "bin" + os.sep + "languages")])
+                                    os.listdir(cwd_path + os.sep + "bin" + os.sep + "languages")])
         lb3_.pack(padx=10, pady=10, side='top')
         lb3_.bind('<<ComboboxSelected>>', lambda *x: settings.set_language())
         ttk.Button(self.frame, text=lang.text138, command=self.license).pack(fill=X, side='bottom')
@@ -866,13 +938,13 @@ class Welcome(ttk.Frame):
 
         def load_license():
             te.delete(1.0, tk.END)
-            with open(os.path.join(elocal, "bin", "licenses", lce.get() + ".txt"), 'r',
+            with open(os.path.join(cwd_path, "bin", "licenses", lce.get() + ".txt"), 'r',
                       encoding='UTF-8') as f:
                 te.insert('insert', f.read())
 
         self.reframe()
         lb = ttk.Combobox(self.frame, state='readonly', textvariable=lce,
-                          values=[i.rsplit('.')[0] for i in os.listdir(elocal + "/bin/licenses") if
+                          values=[i.rsplit('.')[0] for i in os.listdir(cwd_path + "/bin/licenses") if
                                   i != 'private.txt'])
         lb.bind('<<ComboboxSelected>>', lambda *x: load_license())
         lb.current(0)
@@ -892,7 +964,7 @@ class Welcome(ttk.Frame):
         ttk.Label(self.frame, text=lang.t2, font=(None, 25)).pack(side='top', padx=10, pady=10, fill=BOTH,
                                                                   expand=True)
         ttk.Separator(self.frame, orient=HORIZONTAL).pack(padx=10, pady=10, fill=X)
-        with open(os.path.join(elocal, "bin", "licenses", "private.txt"), 'r',
+        with open(os.path.join(cwd_path, "bin", "licenses", "private.txt"), 'r',
                   encoding='UTF-8') as f:
             (te := Text(self.frame)).insert('insert', f.read())
         te.pack(fill=BOTH)
@@ -916,7 +988,7 @@ class SetUtils:
         if set_ini:
             self.set_file = set_ini
         else:
-            self.set_file = os.path.join(elocal, "bin", "setting.ini")
+            self.set_file = os.path.join(cwd_path, "bin", "setting.ini")
         self.nps = '0'
         self.rm_pay = '0'
         self.plugin_repo = None
@@ -963,12 +1035,12 @@ class SetUtils:
 
     @staticmethod
     def load_language(name):
-        lang_file = f'{elocal}/bin/languages/{name}.json'
+        lang_file = f'{cwd_path}/bin/languages/{name}.json'
         _lang: dict = {}
-        if not name and not os.path.exists(f'{elocal}/bin/languages/English.json'):
+        if not name and not os.path.exists(f'{cwd_path}/bin/languages/English.json'):
             error(1)
         elif not os.path.exists(lang_file):
-            _lang = JsonEdit(f'{elocal}/bin/languages/English.json').read()
+            _lang = JsonEdit(f'{cwd_path}/bin/languages/English.json').read()
         else:
             _lang = JsonEdit(lang_file).read()
         [setattr(lang, i, _lang[i]) for i in _lang]
@@ -985,7 +1057,7 @@ class SetUtils:
         try:
             self.set_value("theme", theme.get())
             sv_ttk.set_theme(theme.get())
-            cartoon.load_gif(open_img(BytesIO(getattr(images, f"loading_{win.list2.get()}_byte"))))
+            animation.load_gif(open_img(BytesIO(getattr(images, f"loading_{win.list2.get()}_byte"))))
         except Exception as e:
             win.message_pop(lang.text101 % (theme.get(), e))
 
@@ -1018,7 +1090,7 @@ def re_folder(path):
     os.mkdir(path)
 
 
-@cartoon
+@animation
 def un_dtbo(bn: str = 'dtbo') -> None:
     if not (dtboimg := findfile(f"{bn}.img", work := rwork())):
         print(lang.warn3.format(bn))
@@ -1045,7 +1117,7 @@ def un_dtbo(bn: str = 'dtbo') -> None:
     rmdir(work + "dtbo" + os.sep + "dtbo")
 
 
-@cartoon
+@animation
 def pack_dtbo() -> bool:
     work = rwork()
     if not os.path.exists(work + "dtbo" + os.sep + "dts") or not os.path.exists(work + "dtbo"):
@@ -1068,7 +1140,7 @@ def pack_dtbo() -> bool:
     return True
 
 
-@cartoon
+@animation
 def logo_dump(bn: str = 'logo'):
     if not (logo := findfile(f'{bn}.img', work := rwork())):
         win.message_pop(lang.warn3.format(bn))
@@ -1077,7 +1149,20 @@ def logo_dump(bn: str = 'logo'):
     utils.LogoDumper(logo, work + bn).unpack()
 
 
-@cartoon
+def calculate_md5_file(file_path):
+    md5 = hashlib.md5()
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            md5.update(chunk)
+    return md5.hexdigest()
+
+def calculate_sha256_file(file_path):
+    sha256 = hashlib.sha256()
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            sha256.update(chunk)
+    return sha256.hexdigest()
+@animation
 def logo_pack(origin_logo=None) -> int:
     work = rwork()
     if not origin_logo:
@@ -1142,7 +1227,7 @@ class IconGrid(tk.Frame):
 
 class ModuleManager:
     def __init__(self):
-        self.module_dir = os.path.join(elocal, "bin", "module")
+        self.module_dir = os.path.join(cwd_path, "bin", "module")
         self.uninstall_gui = self.UninstallMpk
         self.new = self.New
         self.new.module_dir = self.module_dir
@@ -1164,7 +1249,7 @@ class ModuleManager:
             data = json.load(f)
             return data.get(item, '')
 
-    @cartoon
+    @animation
     def run(self, id_) -> int:
         if not dn.get():
             print(lang.warn1)
@@ -1187,7 +1272,7 @@ class ModuleManager:
         if os.path.exists(script_path + "main.sh") or os.path.exists(script_path + "main.msh"):
             values = self.Parse(script_path + "main.json", os.path.exists(script_path + "main.msh")) if os.path.exists(
                 script_path + "main.json") else None
-            if not os.path.exists(temp := os.path.join(elocal, "bin", "temp") + os.sep):
+            if not os.path.exists(temp := os.path.join(cwd_path, "bin", "temp") + os.sep):
                 re_folder(temp)
             if not file:
                 file = temp + v_code()
@@ -1266,7 +1351,7 @@ class ModuleManager:
         except (Exception, BaseException):
             ...
         for dep in mconf.get('module', 'depend').split():
-            if not os.path.isdir(os.path.join(elocal, "bin", "module", dep)):
+            if not os.path.isdir(os.path.join(cwd_path, "bin", "module", dep)):
                 print(lang.text36 % (mconf.get('module', 'name'), dep, dep))
                 return 0
         if os.path.exists(os.path.join(self.module_dir, mconf.get('module', 'identifier'))):
@@ -1283,7 +1368,7 @@ class ModuleManager:
                         file = str(file).encode('utf-8').decode('utf-8')
                     info = fz.getinfo(file)
                     extracted_size += info.file_size
-                    fz.extract(file, str(os.path.join(elocal, "bin", "module", install_dir)))
+                    fz.extract(file, str(os.path.join(cwd_path, "bin", "module", install_dir)))
         try:
             depends = mconf.get('module', 'depend')
         except (Exception, BaseException):
@@ -1292,7 +1377,7 @@ class ModuleManager:
         for i in mconf.items('module'):
             minfo[i[0]] = i[1]
         minfo['depend'] = depends
-        with open(os.path.join(elocal, "bin", "module", mconf.get('module', 'identifier'), "info.json"),
+        with open(os.path.join(cwd_path, "bin", "module", mconf.get('module', 'identifier'), "info.json"),
                   'w', encoding='utf-8') as f:
             json.dump(minfo, f, indent=2, ensure_ascii=False)
         with zipfile.ZipFile(mpk) as mpk_f:
@@ -1305,7 +1390,7 @@ class ModuleManager:
         print(mconf.get('module', 'name'), lang.text39)
         list_pls_plugin()
 
-    @cartoon
+    @animation
     def export(self, id_: str):
         name: str = self.get_name(id_)
         if not id_:
@@ -1349,7 +1434,7 @@ class ModuleManager:
             self.aou = None
             self.name = None
             if not hasattr(self, 'module_dir'):
-                self.module_dir = os.path.join(elocal, "bin", "module")
+                self.module_dir = os.path.join(cwd_path, "bin", "module")
             self.gui()
             jzxs(self)
 
@@ -1427,7 +1512,7 @@ class ModuleManager:
 
         def __init__(self, sh):
             if not hasattr(self, 'module_dir'):
-                self.module_dir = os.path.join(elocal, "bin", "module")
+                self.module_dir = os.path.join(cwd_path, "bin", "module")
             self.envs = {'version': settings.version, 'tool_bin': tool_bin.replace('\\', '/'),
                          'project': (settings.path + os.sep + dn.get()).replace('\\', '/'),
                          'moddir': self.module_dir.replace('\\', '/'), 'bin': os.path.dirname(sh).replace('\\', '/')}
@@ -1478,7 +1563,7 @@ class ModuleManager:
                 self.runline(do.replace(f'@{vn}@', v))
 
         def sh(self, cmd):
-            with open(file_ := (os.path.join(elocal, "bin", "temp", v_code())), "w",
+            with open(file_ := (os.path.join(cwd_path, "bin", "temp", v_code())), "w",
                       encoding='UTF-8',
                       newline="\n") as f:
                 for i in self.envs:
@@ -1529,7 +1614,7 @@ class ModuleManager:
             super().__init__()
 
             def generate_sh():
-                temp = os.path.join(elocal, "bin", "temp")
+                temp = os.path.join(cwd_path, "bin", "temp")
                 if not os.path.exists(temp):
                     os.mkdir(temp)
                 self.destroy()
@@ -1632,7 +1717,7 @@ class ModuleManager:
             super().__init__()
             self.arr = {}
             if not hasattr(self, 'module_dir'):
-                self.module_dir = os.path.join(elocal, "bin", "module")
+                self.module_dir = os.path.join(cwd_path, "bin", "module")
             if id_:
                 self.value = id_
                 self.value2 = ModuleManager.get_name(id_)
@@ -1843,13 +1928,13 @@ class InstallMpk(Toplevel):
         except (Exception, BaseException):
             ...
         for dep in self.mconf.get('module', 'depend').split():
-            if not os.path.isdir(os.path.join(elocal, "bin", "module", dep)):
+            if not os.path.isdir(os.path.join(cwd_path, "bin", "module", dep)):
                 self.state['text'] = lang.text36 % (self.mconf.get('module', 'name'), dep, dep)
                 self.installb['text'] = lang.text37
                 self.installb.config(state='normal')
                 return 0
-        if os.path.exists(os.path.join(elocal, "bin", "module", self.mconf.get('module', 'identifier'))):
-            rmtree(os.path.join(elocal, "bin", "module", self.mconf.get('module', 'identifier')))
+        if os.path.exists(os.path.join(cwd_path, "bin", "module", self.mconf.get('module', 'identifier'))):
+            rmtree(os.path.join(cwd_path, "bin", "module", self.mconf.get('module', 'identifier')))
         install_dir = self.mconf.get('module', 'identifier')
         with zipfile.ZipFile(self.mpk, 'r') as myfile:
             with myfile.open(self.mconf.get('module', 'resource'), 'r') as inner_file:
@@ -1864,7 +1949,7 @@ class InstallMpk(Toplevel):
                     info = fz.getinfo(file)
                     extracted_size += info.file_size
                     self.state['text'] = lang.text38.format(file)
-                    fz.extract(file, str(os.path.join(elocal, "bin", "module", install_dir)))
+                    fz.extract(file, str(os.path.join(cwd_path, "bin", "module", install_dir)))
                     self.prog['value'] = extracted_size * 100 / uncompress_size
         try:
             depends = self.mconf.get('module', 'depend')
@@ -1874,11 +1959,11 @@ class InstallMpk(Toplevel):
         for i in self.mconf.items('module'):
             minfo[i[0]] = i[1]
         minfo['depend'] = depends
-        with open(os.path.join(elocal, "bin", "module", self.mconf.get('module', 'identifier'), "info.json"),
+        with open(os.path.join(cwd_path, "bin", "module", self.mconf.get('module', 'identifier'), "info.json"),
                   'w', encoding='utf-8') as f:
             json.dump(minfo, f, indent=2, ensure_ascii=False)
         if self.icon:
-            with open(os.path.join(elocal, "bin", "module", self.mconf.get('module', 'identifier'), "icon"),
+            with open(os.path.join(cwd_path, "bin", "module", self.mconf.get('module', 'identifier'), "icon"),
                       'wb') as f:
                 f.write(self.icon)
 
@@ -2201,7 +2286,7 @@ class MpkStore(Toplevel):
         try:
             for i in files:
                 for percentage, _, _, _, _ in download_api(self.repo + i,
-                                                           os.path.join(elocal, "bin",
+                                                           os.path.join(cwd_path, "bin",
                                                                         "temp"),
                                                            size_=size):
                     if control and states.mpk_store:
@@ -2209,9 +2294,9 @@ class MpkStore(Toplevel):
                     else:
                         return False
 
-                cz(ModuleManager.install, os.path.join(elocal, "bin", "temp", i), join=True)
+                cz(ModuleManager.install, os.path.join(cwd_path, "bin", "temp", i), join=True)
                 try:
-                    os.remove(os.path.join(elocal, "bin", "temp", i))
+                    os.remove(os.path.join(cwd_path, "bin", "temp", i))
                 except (Exception, BaseException) as e:
                     print(e)
         except (ConnectTimeout, HTTPError, BaseException, Exception, TclError) as e:
@@ -2240,7 +2325,7 @@ class MpkStore(Toplevel):
         self.canvas.config(scrollregion=self.canvas.bbox('all'), highlightthickness=0)
 
 
-@cartoon
+@animation
 class Dbkxyt:
     def __init__(self):
         if not dn.get():
@@ -2255,7 +2340,7 @@ class Dbkxyt:
             return
         if os.path.exists(dir_ + 'META-INF'):
             rmdir(dir_ + 'META-INF')
-        zipfile.ZipFile(elocal + os.sep + "bin" + os.sep + "extra_flash.zip").extractall(dir_)
+        zipfile.ZipFile(cwd_path + os.sep + "bin" + os.sep + "extra_flash.zip").extractall(dir_)
         right_device = input_(lang.t26, 'olive')
         with open(dir_ + "bin" + os.sep + "right_device", 'w', encoding='gbk') as rd:
             rd.write(right_device + "\n")
@@ -2444,7 +2529,7 @@ class PackSuper(Toplevel):
                 self.supersz.set(1)
 
 
-@cartoon
+@animation
 def packsuper(sparse, dbfz, size, set_, lb: list, del_=0, return_cmd=0, attrib='readonly'):
     if not dn.get():
         warn_win(text=lang.warn1)
@@ -2610,7 +2695,7 @@ def download_file():
                 win.message_pop(lang.text68, "red")
 
 
-@cartoon
+@animation
 def jboot(bn: str = 'boot'):
     if not (boot := findfile(f"{bn}.img", (work := rwork()))):
         print(lang.warn3.format(bn))
@@ -2626,7 +2711,7 @@ def jboot(bn: str = 'boot'):
     os.chdir(work + bn)
     if call(f"magiskboot unpack -h {boot}") != 0:
         print(f"Unpack {boot} Fail...")
-        os.chdir(elocal)
+        os.chdir(cwd_path)
         rmtree(work + bn)
         return
     if os.access(work + bn + os.sep + "ramdisk.cpio", os.F_OK):
@@ -2645,13 +2730,13 @@ def jboot(bn: str = 'boot'):
         os.chdir(work + bn + os.sep)
         print("Unpacking Ramdisk...")
         call('cpio -i -d -F ramdisk.cpio -D ramdisk')
-        os.chdir(elocal)
+        os.chdir(cwd_path)
     else:
         print("Unpack Done!")
-    os.chdir(elocal)
+    os.chdir(cwd_path)
 
 
-@cartoon
+@animation
 def dboot(nm: str = 'boot'):
     work = rwork()
     flag = ''
@@ -2694,7 +2779,7 @@ def dboot(nm: str = 'boot'):
     else:
         os.remove(work + f"{nm}.img")
         os.rename(work + nm + os.sep + "new-boot.img", work + os.sep + f"{nm}.img")
-        os.chdir(elocal)
+        os.chdir(cwd_path)
         try:
             rmdir(work + nm)
         except (Exception, BaseException):
@@ -2815,7 +2900,10 @@ class Packxx(Toplevel):
         jzxs(self)
 
     def start_(self):
-        self.destroy()
+        try:
+            self.destroy()
+        except AttributeError:
+            pass
         self.packrom()
 
     def show_modify_size(self):
@@ -2891,7 +2979,7 @@ class Packxx(Toplevel):
         jzxs(ck)
         ck.wait_window()
 
-    @cartoon
+    @animation
     def packrom(self) -> bool:
         if not dn.get():
             win.message_pop(lang.warn1)
@@ -3057,7 +3145,7 @@ def script2fs(path):
         json_.write(parts)
 
 
-@cartoon
+@animation
 def unpackrom(ifile) -> None:
     print(lang.text77 + (zip_src := ifile), f'Type:[{gettype(ifile)}]')
     if (ftype := gettype(ifile)) == "ozip":
@@ -3144,7 +3232,7 @@ def rwork() -> str:
     return os.path.join(settings.path, dn.get()) + os.sep
 
 
-@cartoon
+@animation
 def unpack(chose, form: str = '') -> bool:
     if os.name == 'nt':
         if windll.shell32.IsUserAnAdmin():
@@ -3435,7 +3523,7 @@ class Dirsize:
                 ff.write(content)
 
 
-@cartoon
+@animation
 def datbr(work, name, brl: any, dat_ver=4):
     print(lang.text86 % (name, name))
     if not os.path.exists(work + name + ".img"):
@@ -3472,7 +3560,7 @@ def mkerofs(name, format_, work, level, old_kernel=0, UTC=None):
     return call(cmd, out=1)
 
 
-@cartoon
+@animation
 def make_ext4fs(name, work, sparse, size=0, UTC=None):
     print(lang.text91 % name)
     if not UTC:
@@ -3484,7 +3572,7 @@ def make_ext4fs(name, work, sparse, size=0, UTC=None):
         f"make_ext4fs -J -T {UTC} {sparse} -S {work}config{os.sep}{name}_file_contexts -l {size} -C {work}config{os.sep}{name}_fs_config -L {name} -a {name} {work + name}.img {work + name}")
 
 
-@cartoon
+@animation
 def make_f2fs(name, work, UTC=None):
     print(lang.text91 % name)
     size = Dirsize(work + name, 1, 1).rsize_v
@@ -3538,7 +3626,7 @@ def mke2fs(name, work, sparse, size=0, UTC=None):
     return 0
 
 
-@cartoon
+@animation
 def rmdir(path):
     if not path:
         win.message_pop(lang.warn1)
@@ -3560,7 +3648,7 @@ def get_all_file_paths(directory):
             yield os.path.join(root, filename)
 
 
-@cartoon
+@animation
 def pack_zip():
     if ask_win(lang.t53) != 1:
         return
@@ -3871,7 +3959,7 @@ class FormatConversion(ttk.LabelFrame):
             if i.endswith(f) and os.path.isfile(work + i):
                 yield i
 
-    @cartoon
+    @animation
     def conversion(self):
         work = rwork()
         f_get = self.f.get()
@@ -3967,7 +4055,7 @@ unpackg: UnpackGui
 
 def init():
     if settings.updating in ['1', '2']:
-        Upgrade()
+        Updater()
     if int(settings.oobe) < 4:
         Welcome()
     if not os.path.exists(tool_bin):
@@ -3987,8 +4075,8 @@ def init():
     unpackg.gui()
     Frame3().gui()
     project_menu.listdir()
-    cartoon.load_gif(open_img(BytesIO(getattr(images, f"loading_{win.list2.get()}_byte"))))
-    cartoon.init()
+    animation.load_gif(open_img(BytesIO(getattr(images, f"loading_{win.list2.get()}_byte"))))
+    animation.init()
     print(lang.text108)
     win.update()
     jzxs(win)
@@ -4000,7 +4088,7 @@ def init():
 
 def restart(er=None):
     try:
-        if cartoon.tasks:
+        if animation.tasks:
             if not ask_win2("Your operation will not be saved."):
                 return
     except (TclError, ValueError, AttributeError):
