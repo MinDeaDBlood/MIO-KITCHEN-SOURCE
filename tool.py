@@ -235,6 +235,8 @@ def warn_win(text='', color='orange', title="Warn"):
     ttk.Label(frame_inner, text=text, font=(None, 20), foreground=color).pack(side=TOP)
     frame_button = ttk.Frame(frame_inner)
     frame_button.pack(side=TOP)
+    ask.lift()
+    ask.focus_force()
     jzxs(ask)
     ask.after(1500, ask.destroy)
 
@@ -244,7 +246,7 @@ class ToolBox(ttk.Frame):
         super().__init__(master=master)
 
     def __on_mouse(self, event):
-        self.canvas.yview_scroll(-1 * (int(event.delta / 120)), "units")
+        self.canvas.yview_scroll(-1 * int(event.delta / 120), "units")
 
     def pack_basic(self):
         scrollbar = Scrollbar(self, orient='vertical')
@@ -264,8 +266,9 @@ class ToolBox(ttk.Frame):
         ttk.Button(self.label_frame, text=lang.text114, command=lambda: cz(download_file)).grid(row=0, column=0, padx=5,
                                                                                                 pady=5)
         ttk.Button(self.label_frame, text=lang.t59, command=self.GetFileInfo).grid(row=0, column=1, padx=5,
+                                                                                   pady=5)
+        ttk.Button(self.label_frame, text=lang.t60, command=self.FileBytes).grid(row=0, column=2, padx=5,
                                                                                           pady=5)
-        ttk.Button(self.label_frame, text='3').grid(row=0, column=2, padx=5, pady=5)
         ttk.Button(self.label_frame, text='4').grid(row=0, column=3, padx=5, pady=5)
         """"""
         self.update_ui()
@@ -273,6 +276,53 @@ class ToolBox(ttk.Frame):
     def update_ui(self):
         self.label_frame.update_idletasks()
         self.canvas.config(scrollregion=self.canvas.bbox('all'), highlightthickness=0)
+
+    class FileBytes(Toplevel):
+        def __init__(self):
+            super().__init__()
+            self.values = ("B", "GB", "KB", "MB")
+            self.title(lang.t60)
+            self.gui()
+
+        def gui(self):
+            self.f = Frame(self)
+            self.f.pack(pady=5, padx=5, fill=X)
+            self.origin_size = ttk.Entry(self.f)
+            self.origin_size.bind("<KeyRelease>", lambda *x: self.calc())
+            self.origin_size.pack(side='left', padx=5)
+            self.h = ttk.Combobox(self.f, values=self.values, state='readonly', width=3)
+            self.h.current(0)
+            self.h.bind("<<ComboboxSelected>>", lambda *x: self.calc())
+            self.h.pack(side='left', padx=5)
+            Label(self.f, text='=').pack(side='left', padx=5)
+            self.result_size = ttk.Entry(self.f)
+            self.result_size.pack(side='left', padx=5)
+            self.f_ = ttk.Combobox(self.f, values=self.values, state='readonly', width=3)
+            self.f_.current(0)
+            self.f_.bind("<<ComboboxSelected>>", lambda *x: self.calc())
+            self.f_.pack(side='left', padx=5)
+            ttk.Button(self, text=lang.text17, command=self.destroy).pack(fill=BOTH, padx=5, pady=5)
+            jzxs(self)
+
+        def calc(self):
+            if not self.origin_size.get().isdigit():
+                return
+            self.result_size.delete(0, tk.END)
+            self.result_size.insert(0, self.__calc(self.h.get(), self.f_.get(), self.origin_size.get()))
+
+        def __calc(self, origin: str, convert: str, size) -> str:
+            if origin == convert:
+                return size
+            origin_size = int(size)
+
+            units = {
+                "B": 1,
+                "KB": 2 ** 10,
+                "MB": 2 ** 20,
+                "GB": 2 ** 30
+            }
+
+            return str(origin_size * units[origin] / units[convert])
 
     class GetFileInfo(Toplevel):
         def __init__(self):
@@ -286,7 +336,7 @@ class ToolBox(ttk.Frame):
 
         def gui(self):
             a = ttk.LabelFrame(self, text='Drop')
-            (tl := ttk.Label(a, text="Drop File Here\nOr Click It To Choose File")).pack(fill=BOTH, padx=5, pady=5)
+            (tl := ttk.Label(a, text=lang.text132_e)).pack(fill=BOTH, padx=5, pady=5)
             tl.bind('<Button-1>', lambda *x: self.dnd([filedialog.askopenfilename()]))
             a.pack(side=TOP, padx=5, pady=5, fill=BOTH)
             windnd.hook_dropfiles(a, self.dnd)
@@ -300,17 +350,17 @@ class ToolBox(ttk.Frame):
             f_e = ttk.Entry(f)
             f_e.insert(0, value)
             f_e.pack(fill=X, side='left', padx=5, pady=5, expand=True)
-            f_b = ttk.Button(f, text="复制")
+            f_b = ttk.Button(f, text=lang.scopy)
             f_b.configure(command=lambda e=f_e, b=f_b: self.copy_to_clipboard(e.get(), b))
             f_b.pack(fill=X, side='left', padx=5, pady=5)
             f.pack(fill=X)
 
         @staticmethod
         def copy_to_clipboard(value, b: ttk.Button):
-            b.configure(text="已复制", state='disabled')
+            b.configure(text=lang.scopied, state='disabled')
             win.clipboard_clear()
             win.clipboard_append(value)
-            b.after(1500, lambda: b.configure(text="复制", state='normal'))
+            b.after(1500, lambda: b.configure(text=lang.scopy, state='normal'))
 
         def clear(self):
             for i in self.controls:
@@ -335,12 +385,12 @@ class ToolBox(ttk.Frame):
             if not os.path.isfile(file) or not file:
                 self.put_info('Warn', 'Please Select A File')
                 return
-            self.put_info("Name", os.path.basename(file))
-            self.put_info("Path", file)
-            self.put_info("Type", gettype(file))
-            self.put_info("Size", hum_convert(os.path.getsize(file)))
-            self.put_info("Size(B)", os.path.getsize(file))
-            self.put_info("Time", time.ctime(os.path.getctime(file)))
+            self.put_info(lang.name, os.path.basename(file))
+            self.put_info(lang.path, file)
+            self.put_info(lang.type, gettype(file))
+            self.put_info(lang.size, hum_convert(os.path.getsize(file)))
+            self.put_info(f"{lang.size}(B)", os.path.getsize(file))
+            self.put_info(lang.time, time.ctime(os.path.getctime(file)))
             self.put_info("MD5", calculate_md5_file(file))
             self.put_info("SHA256", calculate_sha256_file(file))
 
@@ -1043,6 +1093,7 @@ class SetUtils:
             _lang = JsonEdit(f'{cwd_path}/bin/languages/English.json').read()
         else:
             _lang = JsonEdit(lang_file).read()
+        lang.second = JsonEdit(f'{cwd_path}/bin/languages/English.json').read()
         [setattr(lang, i, _lang[i]) for i in _lang]
 
     def set_value(self, name, value):
@@ -1156,12 +1207,15 @@ def calculate_md5_file(file_path):
             md5.update(chunk)
     return md5.hexdigest()
 
+
 def calculate_sha256_file(file_path):
     sha256 = hashlib.sha256()
     with open(file_path, "rb") as f:
         for chunk in iter(lambda: f.read(4096), b""):
             sha256.update(chunk)
     return sha256.hexdigest()
+
+
 @animation
 def logo_pack(origin_logo=None) -> int:
     work = rwork()
@@ -3826,7 +3880,7 @@ class UnpackGui(ttk.LabelFrame):
                 for i in ext4.Volume(e).get_info_list:
                     info.append(i)
         scroll = ttk.Scrollbar(ck_, orient='vertical')
-        columns = ['Name', 'Value']
+        columns = [lang.name, 'Value']
         table = ttk.Treeview(master=ck_, height=10, columns=columns, show='headings', yscrollcommand=scroll.set)
         for column in columns:
             table.heading(column=column, text=column, anchor=CENTER)
