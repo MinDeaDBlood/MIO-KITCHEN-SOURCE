@@ -1,50 +1,49 @@
 # MIO-KITCHEN-SOURCE #
 ![Banner](https://github.com/ColdWindScholar/MIO-KITCHEN-SOURCE/blob/a9bcfdf613ad28e82f7899e3d420d76ecfea174c/splash.png)
-#### A Rom Tool Written in Python
+#### Программа для работы с прошивками, написанная на Python
 > [!CAUTION]
 > Незаконное коммерческое использование запрещено
 ***
-## This tool uses many open source projects. Huge shout out to the developers!
+## Эта программа используется во многих проектах с открытым исходным кодом. Огромное спасибо разработчикам!
 ***
-## Localization
-### [日本語](https://github.com/ColdWindScholar/MIO-KITCHEN-SOURCE/blob/main/README_ja-JP.md) | [中文](https://github.com/ColdWindScholar/MIO-KITCHEN-SOURCE/blob/main/README_zh-CN.md) | [Português brasileiro](https://github.com/ColdWindScholar/MIO-KITCHEN-SOURCE/blob/main/README_pt-BR.md) | [Deutsch](https://github.com/ColdWindScholar/MIO-KITCHEN-SOURCE/blob/main/README_de-DE.md) | [Русский язык](https://github.com/ColdWindScholar/MIO-KITCHEN-SOURCE/blob/main/README_ru-RU.md)
+## Локализация
+### [Японский](https://github.com/ColdWindScholar/MIO-KITCHEN-SOURCE/blob/main/README_ja-JP.md) | [Китайский](https://github.com/ColdWindScholar/MIO-KITCHEN-SOURCE/blob/main/README_zh-CN.md) | [Португальский (Бразилия)](https://github.com/ColdWindScholar/MIO-KITCHEN-SOURCE/blob/main/README_pt-BR.md) | [Немецкий](https://github.com/ColdWindScholar/MIO-KITCHEN-SOURCE/blob/main/README_de-DE.md) | [Русский](https://github.com/ColdWindScholar/MIO-KITCHEN-SOURCE/blob/main/README_ru-RU.md)
 ***
-## Features
-* Unpack `boot, dtbo, ext4, erofs, payload, logo` and so on
-* Pack `boot, dtbo, ext4, erofs, payload, logo` and so on
+## Возможности программы:
+* Распаковка `boot, dtbo, ext4, erofs, payload, logo` и так далее
+* Упаковка `boot, dtbo, ext4, erofs, payload, logo` и так далее
 ***
-## Advantages
-* Automatic fs_config and fs_context patch
-* GUI graphical interface
-* A graphical plugin manager, plus an editor for plugin script editing. Support plugin installing and exporting
-* Quick updates, secure, stable and fast
-* Unique MSH interpreter that supports running MSH scripts
-* Provide backward compatibility with Android 8 and lower and create .img for these versions
-* Use mkc file choose api on Linux, making it easier to use
+* Автоматическое обновление fs_config и fs_context
+* Графический интерфейс GUI
+* Графический менеджер плагинов, а также редактор для редактирования скриптов плагинов. Поддержка установки и экспорта плагинов
+* Быстрые обновления, безопасность, стабильность и быстродействие
+* Уникальный интерпретатор MSH, поддерживающий запуск MSH-скриптов
+* Обеспечьте обратную совместимость с Android 8 и более поздними версиями и создайте .img для этих версий
+* Используйте mkc-файл выбирающий api в Linux, что упрощает его использование
 ***
-## Supported Os
+## Поддерживаемые ОС
 
-| Os      | Arch                        |
-|---------|-----------------------------|
-| Linux   | x86_64 arm64                |
-| Windows | x86_64 x86 amd64 arm64(by sewzj) |
-| Macos   | Arm64  X86                  |
+| Os      | Arch                   |
+|---------|------------------------|
+| Linux   | x86_64 arm64           |
+| Windows | x86_64 x86 amd64 arm64 |
+| Macos   | Arm64  X86             |
 
-## * macOS Notice
+## * Уведомление для macOS
 ``` shell
-# If you want to use [brotli], you need:
-# You system may had it already, so check first.
-# 
-brew install gettext
+# Если вы хотите использовать [brotli], вам понадобится:
+# Возможно, в вашей системе он уже есть, поэтому сначала проверьте.
+#
+предварительно установите gettext.
 ```
-## Start To Use
+## Начальные шаги по работе с программой
 > [!NOTE]
-> Currently Only Support Python 3.8 and Newer!
-### Prerequisites
+> В настоящее время поддерживается только Python версии 3.8 и новее!
+### Предварительные требования
 <details><summary>macOS</summary>
 
 ```` shell
-brew install python-tk python3  tcl-tk
+python-tk python3  tcl-tk
 python3 -m pip install -U --force-reinstall pip
 pip install -r requirements.txt
 ````
@@ -70,36 +69,36 @@ pip install -r requirements.txt
 
 </details>
 
-### Get started
+### Начать
 ```` shell
 python tool.py
-# To create a binary distribution, you could:
+# Чтобы создать двоичный дистрибутив, вам нужно:
 python build.py
 ````
 ***
-# Contact Us
+# Контакты
 ***
-### Developer's Email: 3590361911@qq.com
-### QQ Group: 836898509
+### Адрес электронной почты разработчика: 3590361911@qq.com
+### Группа QQ: 836898509
 ***
-# Contributors:
+# Участники поддержавшие проект:
 ***
-### macOS prebuilt binary for several tools: [sk](https://github.com/sekaiacg)
-### Some part of the code: [Affggh](https://github.com/affggh)
-### Logo co-designer: [Shaaim](https://github.com/786-shaaim)
-### Japanese translator: [reindex-ot](https://github.com/reindex-ot)
-### Portuguese (Brazil) translator: [igor](https://github.com/igormiguell)
-### German translator: [keldrion](https://github.com/keldrion)
-### Russian translator: [@Rayne Kobayashi](https://github.com/MinDeaDBlood)
-### And MORE...
-### Thanks to people like you for helping out!
+### ### В Mac OS предварительно встроен двоичный код для нескольких инструментов: [sk](https://github.com/sekaiacg)
+### Часть кода: [Affggh](https://github.com/affggh)
+### Со-дизайнер логотипа: [Shaaim](https://github.com/786-shaaim)
+### Перевод и адаптация на японский: [reindex-ot](https://github.com/reindex-ot)
+### Перевод и адаптация на португальский (Бразилия): [igor](https://github.com/igormiguell)
+### Перевод и адаптация на немецкий: [keldrion](https://github.com/keldrion)
+### Перевод и адаптация на русский: [Rayne Kobayashi](https://github.com/MinDeaDBlood)
+### И много чего еще...
+### Спасибо таким людям, как вы, за помощь!
 ***
-# About
+# О программе
 ***
 ### MIO-KITCHEN
 ```
-Always free, users first
-Quality Tools, presented here!
-Brought you by the MIO-KITCHEN-TEAM
+В первую очередь для бесплатного использования
+Качественный софт, только здесь!
+От команды MIO-KITCHEN-
 ```
-#### ColdWindScholar (3590361911@qq.com) All Rights Reserved. ####
+#### ColdWindScholar (3590361911@qq.com) все права защищены. ####
