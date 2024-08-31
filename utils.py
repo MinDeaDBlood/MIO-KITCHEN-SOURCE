@@ -37,7 +37,7 @@ DataImage = blockimgdiff.DataImage
 # -----
 # ----VALUES
 
-# Prevent system errors
+# Предотвращение системных ошибок
 try:
     sys.set_int_max_str_digits(0)
 except AttributeError:
@@ -47,6 +47,8 @@ if os.name == 'nt':
 else:
     prog_path = os.path.normpath(os.path.abspath(os.path.dirname(sys.argv[0])))
 project_name = None
+
+# Форматы файлов и их сигнатуры
 formats = ([b'PK', "zip"], [b'OPPOENCRYPT!', "ozip"], [b'7z', "7z"], [b'\x53\xef', 'ext', 1080],
            [b'\x3a\xff\x26\xed', "sparse"], [b'\xe2\xe1\xf5\xe0', "erofs", 1024], [b"CrAU", "payload"],
            [b"AVB0", "vbmeta"], [b'\xd7\xb7\xab\x1e', "dtbo"], [b'\x10\x20\xF5\xF2', 'f2fs', 1024],
@@ -83,14 +85,14 @@ class Sdat2img:
             3: "Marshmallow 6.x",
             4: "Nougat 7.x / Oreo 8.x / Pie 9.x",
         }
-        print("Android {} detected!\n".format(versions.get(version, f'Unknown version {version}!\n')))
-        # Don't clobber existing files to avoid accidental data loss
+        print("Android {} обнаружен!\n".format(versions.get(version, f'Неизвестная версия {version}!\n')))
+        # Не перезаписывать существующие файлы, чтобы избежать потери данных
         try:
             output_img = open(self.output_image_file, 'wb')
         except IOError as e:
             if e.errno == 17:
-                print(f'Error: the output file "{e.filename}" already exists')
-                print('Remove it, rename it, or choose a different file name.')
+                print(f'Ошибка: файл "{e.filename}" уже существует')
+                print('Удалите его, переименуйте или выберите другое имя файла..')
                 return
             else:
                 print(e)
@@ -103,44 +105,44 @@ class Sdat2img:
             max_file_size = max(pair[1] for pair in block_list) * block_size
             for begin, block_all in block_list:
                 block_count = block_all - begin
-                print(f'Copying {block_count} blocks into position {begin}...')
+                print(f'Копирование {block_count} блоков в нужное место {begin}...')
 
-                # Position output file
+                # Позиционирование выходного файла
                 output_img.seek(begin * block_size)
 
-                # Copy one block at a time
+                # Копирование блоков по одному
                 while block_count > 0:
                     output_img.write(new_data_file.read(block_size))
                     block_count -= 1
 
-        # Make file larger if necessary
+        # Увеличение размера файла, если необходимо
         if output_img.tell() < max_file_size:
             output_img.truncate(max_file_size)
 
         output_img.close()
         new_data_file.close()
-        print(f'Done! Output image: {os.path.realpath(output_img.name)}')
+        print(f'Готово! Образ находится в: {os.path.realpath(output_img.name)}')
 
     @staticmethod
     def rangeset(src):
         src_set = src.split(',')
         num_set = [int(item) for item in src_set]
         if len(num_set) != num_set[0] + 1:
-            print(f'Error on parsing following data to rangeset:\n{src}')
+            print(f'Ошибка при анализе следующих данных в rangeset:\n{src}')
             return
 
         return tuple([(num_set[i], num_set[i + 1]) for i in range(1, len(num_set), 2)])
 
     def parse_transfer_list_file(self):
         with open(self.transfer_list_file, 'r', encoding='utf-8') as trans_list:
-            # First line in transfer list is the version number
-            # Second line in transfer list is the total number of blocks we expect to write
+            # Первая строка в списке передачи — это номер версии
+            # Вторая строка — общее количество блоков, которые мы планируем записать
             if (version := int(trans_list.readline())) >= 2 and (new_blocks := int(trans_list.readline())):
-                # Third line is how many stash entries are needed simultaneously
+                # Третья строка — сколько записей в хранилище нужно одновременно
                 trans_list.readline()
-                # Fourth line is the maximum number of blocks that will be stashed simultaneously
+                # Четвертая строка — максимальное количество блоков, которые будут храниться одновременно
                 trans_list.readline()
-            # Subsequent lines are all individual transfer commands
+            # Последующие строки — это отдельные команды передачи
             yield version
             yield new_blocks
             for line in trans_list:
@@ -151,18 +153,18 @@ class Sdat2img:
                     yield [cmd, self.rangeset(line[1])]
                 else:
                     if cmd in ['erase', 'new', 'zero']:
-                        print(f'Skipping command {cmd}...')
+                        print(f'Пропускаю команду {cmd}...')
                         continue
-                    # Skip lines starting with numbers, they are not commands anyway
+                    # Пропуск строк, начинающихся с чисел, так как они не являются командами
                     if not cmd[0].isdigit():
-                        print(f'Command "{cmd}" is not valid.')
+                        print(f'Команда "{cmd}" недействительна.')
                         return
 
 
 def gettype(file) -> str:
     """
-    Return File Type:str
-    :param file: file path
+    Возвращает тип файла
+    :param file: путь к файлу
     :return:
     """
     if not os.path.isfile(file):
@@ -224,7 +226,7 @@ def gettype(file) -> str:
 
 def dynamic_list_reader(path):
     """
-    read dynamic_list and return a dict
+    Чтение dynamic_list и возврат словаря
     :param path:
     :return:
     """
@@ -246,7 +248,7 @@ def dynamic_list_reader(path):
 
 
 def generate_dynamic_list(dbfz, size, set_, lb, work):
-    data = ['# Remove all existing dynamic partitions and groups before applying full OTA', 'remove_all_groups']
+    data = ['# Удалите все существующие динамические разделы и группы перед применением полного OTA', 'remove_all_groups']
     with open(work + "dynamic_partitions_op_list", 'w', encoding='utf-8', newline='\n') as d_list:
         if set_ == 1:
             data.append(f'# Add group {dbfz} with maximum size {size}')
@@ -278,16 +280,16 @@ def generate_dynamic_list(dbfz, size, set_, lb, work):
 
 def v_code(num=6) -> str:
     """
-    Get Random Str in Number and words
-    :param num: number of Random Str
+    Получение случайной строки из цифр и букв
+    :param num: длина случайной строки
     :return:
     """
     ret = ""
     for i in range(num):
         num = randint(0, i)
-        # num = chr(random.randint(48,57))#ASCII表示数字
-        letter = chr(randint(97, 122))  # 取小写字母
-        letter_ = chr(randint(65, 90))  # 取大写字母
+        # num = chr(random.randint(48,57))#Отображение букв, чисел в кодировке ASCII
+        letter = chr(randint(97, 122))  # Маленькие буквы
+        letter_ = chr(randint(65, 90))  # Большие буквы
         s = str(choice([num, letter, letter_]))
         ret += s
     return ret
@@ -295,7 +297,7 @@ def v_code(num=6) -> str:
 
 def qc(file_) -> None:
     """
-    remove Same Line of File
+    Удаление одинаковых строк из файла
     :param file_:
     :return:
     """
@@ -312,10 +314,10 @@ def qc(file_) -> None:
 
 def cz(func, *args, join=False):
     """
-    Multithreaded running tasks
-    :param func: Function
-    :param args:Args for the task
-    :param join:if wait the task
+    Запуск задач в многопоточном режиме
+    :param func: Функция
+    :param args: Аргументы для задачи
+    :param join: ожидать ли завершения задачи
     :return:
     """
     t = Thread(target=func, args=args, daemon=True)
@@ -326,18 +328,18 @@ def cz(func, *args, join=False):
 
 def simg2img(path):
     """
-    convert Sparse image to Raw Image
+    Преобразование Sparse образа в raw
     :param path:
     :return:
     """
     with open(path, 'rb') as fd:
         if SparseImage(fd).check():
-            print('Sparse image detected.')
-            print('Converting to raw image...')
+            print('Sparse образ определен.')
+            print('Преобразование в raw образ...')
             unsparse_file = SparseImage(fd).unsparse()
-            print('Result:[ok]')
+            print('Результат:[ok]')
         else:
-            print(f"{path} not Sparse.Skip!")
+            print(f"{path} не Sparse.Игнорирую!")
     try:
         if os.path.exists(unsparse_file):
             os.remove(path)
@@ -373,9 +375,9 @@ def findfile(file, dir_) -> str:
 
 def findfolder(dir__, folder_name):
     """
-    Find Folder
-    :param dir__: dir that need Search
-    :param folder_name: folder name need found
+    Поиск папки
+    :param dir__: директория для поиска
+    :param folder_name: имя папки
     :return:
     """
     for root, dirnames, _ in os.walk(dir__):
@@ -387,8 +389,8 @@ def findfolder(dir__, folder_name):
 
 def jzxs(master):
     """
-    Replace Toplevel or Tk to Center
-    :param master: Window
+    Перемещение окна в центр
+    :param master: Окно
     :return:
     """
     master.geometry(
@@ -417,12 +419,12 @@ def u64(x):
 
 def payload_reader(payloadfile):
     """
-    Read Payload.bin Return dam
-    :param payloadfile: File Path
+    Чтение Payload.bin и возврат dam
+    :param payloadfile: путь к файлу
     :return:
     """
     if payloadfile.read(4) != b'CrAU':
-        print("Magic Check Fail\n")
+        print("Ошибка проверки\n")
         payloadfile.close()
         return um
     file_format_version = u64(payloadfile.read(8))
@@ -443,14 +445,14 @@ class Vbpatch:
 
     def checkmagic(self) -> bool:
         """
-        Check The Magic if vbmeta
+        Проверка Magic если vbmeta
         :return:
         """
         if os.access(self.file, os.F_OK):
             with open(self.file, "rb") as f:
                 return b'AVB0' == f.read(4)
         else:
-            print("File does not exist!")
+            print("Файл не существует!")
         return False
 
     def patchvb(self, flag):
@@ -460,9 +462,9 @@ class Vbpatch:
             with open(self.file, 'rb+') as f:
                 f.seek(123, 0)
                 f.write(flag)
-            print("Done!")
+            print("Готово!")
         else:
-            print("File not Found")
+            print("Файл не найден")
             return False
         return True
 
@@ -477,8 +479,8 @@ class Dumpcfg:
 
 
 class Bmphead:
-    def __init__(self, buf: bytes = None):  # Read bytes buf and use this struct to parse
-        assert buf is not None, f"buf Should be bytes, not {type(buf)}"
+    def __init__(self, buf: bytes = None):  # Чтение байтов buf и использование структуры для синтаксического анализа
+        assert buf is not None, f"buf Должен быть в байтах, а не в {type(buf)}"
         # print(buf)
         (
             self.magic,
@@ -508,11 +510,11 @@ class LogoDumper:
 
     def check_img(self, img: str):
         """
-        Check The Img If Unpack Able
+        Проверка образа на возможность распаковки
         :param img:
         :return:
         """
-        assert os.access(img, os.F_OK), f"{img} does not exist!"
+        assert os.access(img, os.F_OK), f"{img} не существует!"
         with open(img, 'rb') as f:
             f.seek(self.cfg.headoff, 0)
             self.magic = struct.unpack(
@@ -526,16 +528,16 @@ class LogoDumper:
                     self.cfg.imgnum += 1
                 else:
                     break
-        assert self.magic == b"LOGO!!!!", "File does not match xiaomi logo magic!"
+        assert self.magic == b"LOGO!!!!", "Файл не соответствует логотипу xiaomi magic!"
         return True
 
     def unpack(self):
         """
-        Unpack Logo Img, Output To self.out
+        Распаковка образа Logo, вывод в self.out
         :return:
         """
         with open(self.img, 'rb') as f:
-            print("Unpack:\n"
+            print("Распаковка:\n"
                   "BMP\tSize\tWidth\tHeight")
             for i in range(self.cfg.imgnum):
                 f.seek(self.cfg.imgblkoffs[i], 0)
@@ -544,11 +546,11 @@ class LogoDumper:
                 print(f"{i:d}\t{bmp_h.fsize:d}\t{bmp_h.width:d}\t{bmp_h.height:d}")
                 with open(os.path.join(self.out, f"{i}.bmp"), 'wb') as o:
                     o.write(f.read(bmp_h.fsize))
-            print("\tDone!")
+            print("\tГотово!")
 
     def repack(self) -> None:
         """
-        Repack Logo Img
+        Перепаковка образа Logo
         :return:
         """
         with open(self.out, 'wb') as o:
@@ -568,4 +570,4 @@ class LogoDumper:
             for i in range(self.cfg.imgnum):
                 o.write(struct.pack("<I", self.cfg.imgblkoffs[i]))
                 o.write(struct.pack("<I", self.cfg.imgblkszs[i]))
-            print("\tDone!")
+            print("\tГотово!")
