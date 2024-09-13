@@ -13,64 +13,63 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import ctypes
-import hashlib
-import json
+import os
+import sys
 import platform
 import shutil
 import subprocess
 import threading
-from collections import deque
+import hashlib
+import json
+import time
 from functools import wraps
 from random import randrange
-from tkinter.ttk import Scrollbar
-import tarfile
-from unkdz import KDZFileTools
-
-if platform.system() != 'Darwin':
-    try:
-        import pyi_splash
-
-        pyi_splash.update_text('Loading ...')
-        pyi_splash.close()
-    except ModuleNotFoundError:
-        ...
-import os.path
-import pathlib
-import shlex
-import sys
-import time
+from collections import deque
 from platform import machine
 from webbrowser import open as openurl
-import tkinter as tk
-from timeit import default_timer as dti
-import zipfile
 from io import BytesIO, StringIO
+
+import ctypes
+import tarfile
+import zipfile
+import pathlib
+import shlex
+import tkinter as tk
 from tkinter import (Tk, BOTH, LEFT, RIGHT, Canvas, Text, X, Y, BOTTOM, StringVar, IntVar, TOP, Toplevel,
-                     HORIZONTAL, TclError, Frame, Label, Listbox, DISABLED, Menu, BooleanVar, CENTER)
-from shutil import rmtree, copy, move
+                     HORIZONTAL, TclError, Frame, Label, Listbox, DISABLED, Menu, BooleanVar, CENTER, filedialog)
+from tkinter.ttk import Scrollbar
+
+from PIL.Image import open as open_img
+from PIL.ImageTk import PhotoImage
+from timeit import default_timer as dti
+
 import pygments.lexers
 import requests
 from requests import ConnectTimeout, HTTPError
-import sv_ttk
-from PIL.Image import open as open_img
-from PIL.ImageTk import PhotoImage
-from dumper import Dumper
-from utils import lang
 
+# Conditional imports
 if os.name == 'nt':
     import windnd
     from ctypes import windll
-    from tkinter import filedialog
     import pywinstyles
 else:
     import mkc_filedialog as filedialog
 
-if sys.version_info.major == 3:
-    if sys.version_info.minor < 8:
-        input(
-            f"Not supported: [{sys.version}] yet\nEnter to quit\nSorry for any inconvenience caused")
-        sys.exit(1)
+# Splash screen import
+if platform.system() != 'Darwin':
+    try:
+        import pyi_splash
+        pyi_splash.update_text('Loading ...')
+        pyi_splash.close()
+    except ModuleNotFoundError:
+        pass  # Handle the exception if needed
+
+# Version check
+if sys.version_info.major == 3 and sys.version_info.minor < 8:
+    input(f"Not supported: [{sys.version}] yet\nEnter to quit\nSorry for any inconvenience caused")
+    sys.exit(1)
+
+# Additional imports
 import imgextractor
 import lpunpack
 import mkdtboimg
@@ -94,26 +93,31 @@ from undz import DZFileTools
 from selinux_audit_allow import main as selinux_audit_allow
 import logging
 
+# Optional imports
 try:
     import imp
 except ImportError:
     imp = None
+
 try:
     from pycase import ensure_dir_case_sensitive
 except ImportError:
     def ensure_dir_case_sensitive(*x):
         print(f'Cannot sensitive {x}, Not Supported')
 
+# Constants
 cwd_path = utils.prog_path
 
 
-class States:
-    update_window = False
-    donate_window = False
-    mpk_store = False
-    open_pids = []
-    run_source = True if gettype(sys.argv[0]) == "unknown" else False
-    in_oobe = False
+from enum import Enum
+
+class ProgramState(Enum):
+    UPDATE_WINDOW = False
+    DONATE_WINDOW = False
+    MPK_STORE = False
+    OPEN_PIDS = []
+    RUN_SOURCE = True if gettype(sys.argv[0]) == "unknown" else False
+    IN_OOBE = False
 
 
 class JsonEdit:
@@ -121,13 +125,13 @@ class JsonEdit:
         self.file = j_f
 
     def read(self):
-        if not os.path.exists(self.file):
-            return {}
-        with open(self.file, 'r+', encoding='utf-8') as pf:
-            try:
+        try:
+            with open(self.file, 'r+', encoding='utf-8') as pf:
                 return json.load(pf)
-            except (AttributeError, ValueError, json.decoder.JSONDecodeError):
-                return {}
+        except FileNotFoundError:
+            return {}
+        except (ValueError, json.decoder.JSONDecodeError):
+            return {}
 
     def write(self, data):
         with open(self.file, 'w+', encoding='utf-8') as pf:
@@ -140,8 +144,6 @@ class JsonEdit:
 
 
 class LoadAnim:
-    gifs = []
-
     def __init__(self):
         self.frames = []
         self.hide_gif = False
@@ -193,7 +195,7 @@ class LoadAnim:
                 except ValueError:
                     self.tasks[task_num].append(info)
                 else:
-                    print(f"Please Wait for task_{task_real.native_id} with args {info[1]}...\n")
+                    logging.info(f"Please Wait for task_{task_real.native_id} with args {info[1]}...\n")
                     return
             else:
                 self.tasks[task_num] = [info]
@@ -209,11 +211,10 @@ class LoadAnim:
             del info, task_num
             if not self.tasks:
                 self.stop()
-
+        
         return call_func
-
-
-animation = LoadAnim()
+        
+        animation = LoadAnim()
 
 
 class DevNull:
