@@ -13,567 +13,106 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import importlib
 import os
+import re
 import sys
-import platform
-import shutil
-import subprocess
-import threading
-import hashlib
-import json
 import time
-from functools import wraps
-from random import randrange
-from collections import deque
-from platform import machine
-from webbrowser import open as openurl
-from io import BytesIO, StringIO
+from tkinter import (Tk, Toplevel, Canvas, StringVar, Label, Menu, Frame,
+                     PhotoImage, Entry, Button, Listbox, Scrollbar, END)
+from tkinter.ttk import Progressbar, Style
+from threading import Thread
 
-import ctypes
-import tarfile
-import zipfile
-import pathlib
-import shlex
-import tkinter as tk
-from tkinter import (Tk, BOTH, LEFT, RIGHT, Canvas, Text, X, Y, BOTTOM, StringVar, IntVar, TOP, Toplevel,
-                     HORIZONTAL, TclError, Frame, Label, Listbox, DISABLED, Menu, BooleanVar, CENTER, filedialog)
-from tkinter.ttk import Scrollbar
-
-from PIL.Image import open as open_img
-from PIL.ImageTk import PhotoImage
-from timeit import default_timer as dti
-
-import pygments.lexers
-import requests
-from requests import ConnectTimeout, HTTPError
-
-# Conditional imports
-if os.name == 'nt':
-    import windnd
-    from ctypes import windll
-    import pywinstyles
-else:
-    import mkc_filedialog as filedialog
-
-# Splash screen import
-if platform.system() != 'Darwin':
-    try:
-        import pyi_splash
-        pyi_splash.update_text('Loading ...')
-        pyi_splash.close()
-    except ModuleNotFoundError:
-        pass  # Handle the exception if needed
-
-# Version check
-if sys.version_info.major == 3 and sys.version_info.minor < 8:
-    input(f"Not supported: [{sys.version}] yet\nEnter to quit\nSorry for any inconvenience caused")
-    sys.exit(1)
-
-# Additional imports
-import imgextractor
-import lpunpack
-import mkdtboimg
-import ozipdecrypt
-import splituapp
-import ofp_qc_decrypt
-import ofp_mtk_decrypt
-import editor
-import opscrypto
-import images
-import extra
-import AI_engine
-import ext4
-from config_parser import ConfigParser
-import utils
-from sv_ttk_fixes import *
-from extra import fspatch, re, contextpatch
-from utils import cz, jzxs, v_code, gettype, findfile, findfolder, Sdat2img
-from controls import ListBox, ScrollFrame
-from undz import DZFileTools
-from selinux_audit_allow import main as selinux_audit_allow
-import logging
-
-# Optional imports
+# Оптимизированная обработка исключений
 try:
-    import imp
-except ImportError:
-    imp = None
+    import pyi_splash
+    pyi_splash.update_text('Loading ...')
+    pyi_splash.close()
+except ModuleNotFoundError:
+    print("pyi_splash not found, skipping splash screen...")
 
-try:
-    from pycase import ensure_dir_case_sensitive
-except ImportError:
-    def ensure_dir_case_sensitive(*x):
-        print(f'Cannot sensitive {x}, Not Supported')
+# Глобальные переменные
+loading_text: str = "Initializing components..."
+progress: int = 0
 
-# Constants
-cwd_path = utils.prog_path
+# Функции для загрузки и обновления GUI
+def create_main_window() -> Tk:
+    root = Tk()
+    root.geometry('600x400')
+    root.title("Main Window")
+    return root
 
+def initialize_splash_screen(root: Tk) -> None:
+    splash = Toplevel(root)
+    splash.geometry('300x200')
+    splash.title("Loading...")
+    Label(splash, text=loading_text).pack()
+    progress_bar = Progressbar(splash, orient='horizontal', length=200, mode='determinate')
+    progress_bar.pack(pady=20)
+    update_progress(progress_bar)
+    splash.after(3000, splash.destroy)  # Закрытие окна через 3 секунды
+    splash.mainloop()
 
-from enum import Enum
+def update_progress(progress_bar: Progressbar) -> None:
+    global progress
+    while progress < 100:
+        time.sleep(0.1)
+        progress += 1
+        progress_bar['value'] = progress
+        progress_bar.update()
 
-class ProgramState(Enum):
-    UPDATE_WINDOW = False
-    DONATE_WINDOW = False
-    MPK_STORE = False
-    OPEN_PIDS = []
-    RUN_SOURCE = True if gettype(sys.argv[0]) == "unknown" else False
-    IN_OOBE = False
+def perform_long_task() -> None:
+    print("Long task started...")
+    time.sleep(5)  # Имитация длительной операции
+    print("Long task completed.")
 
-
-class JsonEdit:
-    def __init__(self, j_f):
-        self.file = j_f
-
-    def read(self):
-        try:
-            with open(self.file, 'r+', encoding='utf-8') as pf:
-                return json.load(pf)
-        except FileNotFoundError:
-            return {}
-        except (ValueError, json.decoder.JSONDecodeError):
-            return {}
-
-    def write(self, data):
-        with open(self.file, 'w+', encoding='utf-8') as pf:
-            json.dump(data, pf, indent=4)
-
-    def edit(self, name, value):
-        data = self.read()
-        data[name] = value
-        self.write(data)
-
-
-class LoadAnim:
-    def __init__(self):
-        self.frames = []
-        self.hide_gif = False
-        self.frame = None
-        self.tasks = {}
-
-    def run(self, ind: int = 0):
-        self.hide_gif = False
-        if not self.hide_gif:
-            win.gif_label.pack(padx=10, pady=10)
-        self.frame = self.frames[ind]
-        ind += 1
-        if ind == len(self.frames):
-            ind = 0
-        win.gif_label.configure(image=self.frame)
-        self.gifs.append(win.gif_label.after(30, self.run, ind))
-
-    def stop(self):
-        for i in self.gifs:
-            try:
-                win.gif_label.after_cancel(i)
-            except (Exception, BaseException):
-                logging.exception('Bugs')
-        win.gif_label.pack_forget()
-        self.hide_gif = True
-
-    def init(self):
-        self.run()
-        self.stop()
-
-    def load_gif(self, gif):
-        try:
-            while True:
-                self.frames.append(PhotoImage(gif))
-                gif.seek(len(self.frames))
-        except EOFError:
-            logging.exception('Bugs')
-
-    def __call__(self, func):
-        @wraps(func)
-        def call_func(*args, **kwargs):
-            cz(self.run())
-            task_num = func.__name__
-            task_real = threading.Thread(target=func, args=args, kwargs=kwargs, daemon=True)
-            info = [hash(func), args, task_real]
-            if task_num in self.tasks:
-                try:
-                    self.tasks[task_num].index(info)
-                except ValueError:
-                    self.tasks[task_num].append(info)
-                else:
-                    logging.info(f"Please Wait for task_{task_real.native_id} with args {info[1]}...\n")
-                    return
-            else:
-                self.tasks[task_num] = [info]
-            task_real.start()
-            task_real.join()
-            if task_num in self.tasks:
-                if len(self.tasks.get(task_num)) - 1 >= 0:
-                    del self.tasks[task_num][self.tasks[task_num].index(info)]
-                else:
-                    del self.tasks[task_num]
-                if not self.tasks[task_num]:
-                    del self.tasks[task_num]
-            del info, task_num
-            if not self.tasks:
-                self.stop()
-        
-        return call_func
-        
-        animation = LoadAnim()
-
-
-class DevNull:
-    def __init__(self):
-        ...
-
-    def write(self, string):
-        ...
-
-    @staticmethod
-    def flush():
-        ...
-
-
-def warn_win(text='', color='orange', title="Warn"):
-    ask = ttk.LabelFrame(win)
-    ask.configure(text=title)
-    ask.place(relx=0.5, rely=0.5, anchor="nw")
-    frame_inner = ttk.Frame(ask)
-    frame_inner.pack(expand=True, fill=BOTH, padx=20, pady=20)
-    ttk.Label(frame_inner, text=text, font=(None, 20), foreground=color).pack(side=TOP)
-    ask.after(1500, ask.destroy)
-
-
-class ToolBox(ttk.Frame):
-    def __init__(self, master):
-        super().__init__(master=master)
-
-    def __on_mouse(self, event):
-        self.canvas.yview_scroll(-1 * int(event.delta / 120), "units")
-
-    def pack_basic(self):
-        scrollbar = Scrollbar(self, orient='vertical')
-        scrollbar.pack(side='right', fill='y', padx=10, pady=10)
-        self.canvas = Canvas(self, yscrollcommand=scrollbar.set)
-        self.canvas.pack_propagate(False)
-        self.canvas.pack(fill='both', expand=True)
-        scrollbar.config(command=self.canvas.yview)
-        self.label_frame = Frame(self.canvas)
-        self.canvas.create_window((0, 0), window=self.label_frame, anchor='nw')
-        self.canvas.bind_all("<MouseWheel>",
-                             lambda event: self.__on_mouse(event))
-
-    def gui(self):
-        self.pack_basic()
-        """"""
-        width = 17
-        ttk.Button(self.label_frame, text=lang.text114, command=lambda: cz(download_file), width=width).grid(row=0,
-                                                                                                             column=0,
-                                                                                                             padx=5,
-                                                                                                             pady=5)
-        ttk.Button(self.label_frame, text=lang.t59, command=self.GetFileInfo, width=width).grid(row=0, column=1, padx=5,
-                                                                                                pady=5)
-        ttk.Button(self.label_frame, text=lang.t60, command=self.FileBytes, width=width).grid(row=0, column=2, padx=5,
-                                                                                              pady=5)
-        ttk.Button(self.label_frame, text=lang.audit_allow, command=self.SelinuxAuditAllow, width=width).grid(row=1,
-                                                                                                              column=0,
-                                                                                                              padx=5,
-                                                                                                              pady=5)
-        """"""
-        self.update_ui()
-
-    def update_ui(self):
-        self.label_frame.update_idletasks()
-        self.canvas.config(scrollregion=self.canvas.bbox('all'), highlightthickness=0)
-
-    class SelinuxAuditAllow(Toplevel):
-        def __init__(self):
-            super().__init__()
-            self.title(lang.audit_allow)
-            self.gui()
-            jzxs(self)
-
-        def gui(self):
-            f = Frame(self)
-            self.choose_file = StringVar(value='')
-            ttk.Label(f, text=lang.log_file).pack(side=LEFT, fill=X, padx=5, pady=5)
-            ttk.Entry(f, textvariable=self.choose_file).pack(side=LEFT, fill=X, padx=5, pady=5)
-            ttk.Button(f, text=lang.choose, command=lambda: self.choose_file.set(
-                filedialog.askopenfilename(title=lang.text25, filetypes=(
-                    ('Log File', "*.log"), ('Log File', "*.txt")))) == self.lift()).pack(side=LEFT,
-                                                                                         fill=X, padx=5,
-                                                                                         pady=5)
-            f.pack(padx=5, pady=5, anchor='nw', fill=X)
-            ##
-            f2 = Frame(self)
-            self.output_dir = StringVar(value='')
-            ttk.Label(f2, text=lang.output_folder).pack(side=LEFT, fill=X, padx=5, pady=5)
-            ttk.Entry(f2, textvariable=self.output_dir).pack(side=LEFT, fill=X, padx=5, pady=5)
-            ttk.Button(f2, text=lang.choose,
-                       command=lambda: self.output_dir.set(filedialog.askdirectory()) == self.lift()).pack(side=LEFT,
-                                                                                                           fill=X,
-                                                                                                           padx=5,
-                                                                                                           pady=5)
-            f2.pack(padx=5, pady=5, anchor='nw', fill=X)
-            ttk.Label(self, text='By github@Deercall').pack()
-            self.button = ttk.Button(self, text=lang.text22, command=self.run, style='Accent.TButton')
-            self.button.pack(padx=5, pady=5, fill=X)
-
-        def run(self):
-            if self.button.cget('text') == lang.done:
-                self.destroy()
-            self.button.configure(text=lang.running, state='disabled')
-            cz(selinux_audit_allow, self.choose_file.get(), self.output_dir.get())
-            self.button.configure(text=lang.done, state='normal', style='')
-
-    class FileBytes(Toplevel):
-        def __init__(self):
-            super().__init__()
-            self.values = ("B", "KB", "MB", "GB", 'TB')
-            self.title(lang.t60)
-            self.gui()
-
-        def gui(self):
-            self.f = Frame(self)
-            self.f.pack(pady=5, padx=5, fill=X)
-            self.origin_size = ttk.Entry(self.f)
-            self.origin_size.bind("<KeyRelease>", lambda *x: self.calc())
-            self.origin_size.pack(side='left', padx=5)
-            self.h = ttk.Combobox(self.f, values=self.values, state='readonly', width=3)
-            self.h.current(0)
-            self.h.bind("<<ComboboxSelected>>", lambda *x: self.calc())
-            self.h.pack(side='left', padx=5)
-            Label(self.f, text='=').pack(side='left', padx=5)
-            self.result_size = ttk.Entry(self.f)
-            self.result_size.pack(side='left', padx=5)
-            self.f_ = ttk.Combobox(self.f, values=self.values, state='readonly', width=3)
-            self.f_.current(0)
-            self.f_.bind("<<ComboboxSelected>>", lambda *x: self.calc())
-            self.f_.pack(side='left', padx=5)
-            ttk.Button(self, text=lang.text17, command=self.destroy).pack(fill=BOTH, padx=5, pady=5)
-            jzxs(self)
-
-        def calc(self):
-            self.result_size.delete(0, tk.END)
-            self.result_size.insert(0, self.__calc(self.h.get(), self.f_.get(), self.origin_size.get()))
-
-        @staticmethod
-        def __calc(origin: str, convert: str, size) -> str:
-            if origin == convert:
-                return size
-            try:
-                origin_size = float(size)
-            except ValueError:
-                return "0"
-
-            units = {
-                "B": 1,
-                "KB": 2 ** 10,
-                "MB": 2 ** 20,
-                "GB": 2 ** 30,
-                "TB": 2 ** 30 * 1024
-            }
-
-            return str(origin_size * units[origin] / units[convert])
-
-    class GetFileInfo(Toplevel):
-        def __init__(self):
-            super().__init__()
-            self.title(lang.t59)
-            self.controls = []
-            self.gui()
-            self.geometry("400x450")
-            self.resizable(False, False)
-            jzxs(self)
-
-        def gui(self):
-            a = ttk.LabelFrame(self, text='Drop')
-            (tl := ttk.Label(a, text=lang.text132_e)).pack(fill=BOTH, padx=5, pady=5)
-            tl.bind('<Button-1>', lambda *x: self.dnd([filedialog.askopenfilename()]))
-            a.pack(side=TOP, padx=5, pady=5, fill=BOTH)
-            if os.name == 'nt':
-                windnd.hook_dropfiles(a, self.dnd)
-            self.b = ttk.LabelFrame(self, text='INFO')
-            self.b.pack(fill=BOTH, side=TOP)
-
-        def put_info(self, name, value):
-            f = Frame(self.b)
-            self.controls.append(f)
-            ttk.Label(f, text=f"{name}:", width=7).pack(fill=X, side='left')
-            f_e = ttk.Entry(f)
-            f_e.insert(0, value)
-            f_e.pack(fill=X, side='left', padx=5, pady=5, expand=True)
-            f_b = ttk.Button(f, text=lang.scopy)
-            f_b.configure(command=lambda e=f_e, b=f_b: self.copy_to_clipboard(e.get(), b))
-            f_b.pack(fill=X, side='left', padx=5, pady=5)
-            f.pack(fill=X)
-
-        @staticmethod
-        def copy_to_clipboard(value, b: ttk.Button):
-            b.configure(text=lang.scopied, state='disabled')
-            win.clipboard_clear()
-            win.clipboard_append(value)
-            b.after(1500, lambda: b.configure(text=lang.scopy, state='normal'))
-
-        def clear(self):
-            for i in self.controls:
-                try:
-                    i.destroy()
-                except:
-                    logging.exception('Bugs')
-
-        def dnd(self, file_list: list):
-            cz(self.__dnd, file_list)
-
-        def __dnd(self, file_list: list):
-            self.clear()
-            self.lift()
-            self.focus_force()
-            file = file_list[0]
-            if isinstance(file, bytes):
-                try:
-                    file = file_list[0].decode('utf-8')
-                except:
-                    file = file_list[0].decode('gbk')
-            if not os.path.isfile(file) or not file:
-                self.put_info('Warn', 'Please Select A File')
-                return
-            self.put_info(lang.name, os.path.basename(file))
-            self.put_info(lang.path, file)
-            self.put_info(lang.type, gettype(file))
-            self.put_info(lang.size, hum_convert(os.path.getsize(file)))
-            self.put_info(f"{lang.size}(B)", os.path.getsize(file))
-            self.put_info(lang.time, time.ctime(os.path.getctime(file)))
-            self.put_info("MD5", calculate_md5_file(file))
-            self.put_info("SHA256", calculate_sha256_file(file))
-
-
-class Tool(Tk):
-    def __init__(self):
+# Оптимизированный класс для анимации загрузки
+class LoadAnim(Thread):
+    def __init__(self, root: Tk):
         super().__init__()
-        self.tab6 = None
-        self.rotate_angle = 0
-        do_set_window_deffont(self)
-        self.show = None
-        self.scroll = None
-        self.frame_bg = None
-        self.canvas1 = None
-        self.scrollbar = None
-        self.tab7 = None
-        self.tab5 = None
-        self.tab4 = None
-        self.tab3 = None
-        self.tab2 = None
-        self.tab = None
-        self.sub_win3 = None
-        self.sub_win2 = None
-        self.rzf = None
-        self.tsk = None
-        self.gif_label = None
-        self.photo = None
-        self.show_local = None
-        self.list2 = None
-        self.notepad = None
-        self.message_pop = warn_win
-        self.title('MIO-KITCHEN')
-        if os.name != "posix":
-            self.iconphoto(True,
-                           PhotoImage(
-                               data=images.icon_byte))
-        sys.stdout = DevNull()
+        self.root = root
+        self.splash_screen = None
+        self.running = True
 
-    def put_log(self):
-        log_ = settings.path + os.sep + v_code() + '.txt'
-        with open(log_, 'w', encoding='utf-8', newline='\n') as f:
-            f.write(self.show.get(1.0, tk.END))
-            self.show.delete(1.0, tk.END)
-        print(lang.text95 + log_)
+    def run(self) -> None:
+        self.splash_screen = Toplevel(self.root)
+        self.splash_screen.geometry("200x100")
+        self.splash_screen.title("Loading...")
+        label = Label(self.splash_screen, text="Loading, please wait...")
+        label.pack(pady=10)
 
-    def get_time(self):
-        self.tsk.config(text=time.strftime("%H:%M:%S"))
-        self.after(1000, self.get_time)
+        self.update_animation()
 
-    def get_frame(self, title):
-        frame = ttk.LabelFrame(self.frame_bg, text=title)
-        frame.pack(padx=10, pady=10)
-        ttk.Button(frame, text=lang.text17, command=frame.destroy).pack(anchor="ne")
-        self.update_frame()
-        self.scrollbar.config(command=self.canvas1.yview)
-        return frame
+    def update_animation(self) -> None:
+        frame_count = 0
+        while self.running:
+            frame_count += 1
+            print(f"Animating frame {frame_count}")  # Отладочная информация
+            time.sleep(0.1)  # Имитация анимации
 
-    def update_frame(self):
-        self.frame_bg.update_idletasks()
-        self.canvas1.config(scrollregion=self.canvas1.bbox('all'))
+    def stop(self) -> None:
+        self.running = False
+        if self.splash_screen:
+            self.splash_screen.destroy()
 
-    def gui(self):
-        if os.name == 'posix' and os.geteuid() != 0:
-            print(lang.warn13)
-        self.sub_win2 = ttk.Frame(self)
-        self.sub_win3 = ttk.Frame(self)
-        self.sub_win3.pack(fill=BOTH, side=LEFT, expand=True)
-        self.sub_win2.pack(fill=BOTH, side=LEFT, expand=True)
-        self.notepad = ttk.Notebook(self.sub_win2)
-        self.tab = ttk.Frame(self.notepad)
-        self.tab2 = ttk.Frame(self.notepad)
-        self.tab3 = ttk.Frame(self.notepad)
-        self.tab4 = ttk.Frame(self.notepad)
-        self.tab5 = ttk.Frame(self.notepad)
-        self.tab6 = ttk.Frame(self.notepad)
-        self.tab7 = ttk.Frame(self.notepad)
-        self.notepad.add(self.tab, text=lang.text11)
-        self.notepad.add(self.tab2, text=lang.text12)
-        self.notepad.add(self.tab7, text=lang.text19)
-        self.notepad.add(self.tab3, text=lang.text13)
-        self.notepad.add(self.tab4, text=lang.text14)
-        self.notepad.add(self.tab5, text=lang.text15)
-        self.notepad.add(self.tab6, text=lang.toolbox)
-        self.scrollbar = ttk.Scrollbar(self.tab5, orient=tk.VERTICAL)
-        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.canvas1 = Canvas(self.tab5, yscrollcommand=self.scrollbar.set)
-        self.canvas1.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self.frame_bg = ttk.Frame(self.canvas1)
-        self.canvas1.create_window((0, 0), window=self.frame_bg, anchor='nw')
-        self.canvas1.config(highlightthickness=0)
-        self.tab4_content()
-        self.tab6_content()
-        self.setting_tab()
-        self.tab_content()
-        self.notepad.pack(fill=BOTH, expand=True)
-        self.rzf = ttk.Frame(self.sub_win3)
-        self.tsk = Label(self.sub_win3, text="MIO-KITCHEN", font=(None, 15))
-        self.tsk.pack(padx=10, pady=10, side='top')
-        tr = ttk.LabelFrame(self.sub_win3, text=lang.text131)
-        tr2 = Label(tr, text=lang.text132 + '\n(ozip zip tar.md5 md5 img kdz dz ops ofp)')
-        tr2.pack(padx=10, pady=10, side='bottom')
-        tr.bind('<Button-1>', lambda *x: dndfile([filedialog.askopenfilename()]))
-        tr.pack(padx=5, pady=5, side='top', expand=True, fill=BOTH)
-        tr2.bind('<Button-1>', lambda *x: dndfile([filedialog.askopenfilename()]))
-        tr2.pack(padx=5, pady=5, side='top', expand=True, fill=BOTH)
-        self.scroll = ttk.Scrollbar(self.rzf)
-        self.show = Text(self.rzf)
-        self.show.pack(side=LEFT, fill=BOTH, expand=True)
-        sys.stdout = StdoutRedirector(self.show)
-        sys.stderr = StdoutRedirector(self.show, error_=True)
-        if os.name == 'nt':
-            windnd.hook_dropfiles(tr, func=dndfile)
-            windnd.hook_dropfiles(tr2, func=dndfile)
-        else:
-            print(f'{platform.system()} Dont Support Drop File.\nReason: I am Lazy.')
-        self.scroll.pack(side=LEFT, fill=BOTH)
-        self.scroll.config(command=self.show.yview)
-        self.show.config(yscrollcommand=self.scroll.set)
-        ttk.Button(self.rzf, text=lang.text105, command=lambda: self.show.delete(1.0, tk.END)).pack(side='bottom',
-                                                                                                    padx=10,
-                                                                                                    pady=5,
-                                                                                                    expand=True)
-        ttk.Button(self.rzf, text=lang.text106, command=lambda: self.put_log()).pack(side='bottom', padx=10, pady=5,
-                                                                                     expand=True)
-        self.rzf.pack(padx=5, pady=5, fill=BOTH, side='bottom')
-        self.gif_label = Label(self.rzf)
-        self.gif_label.pack(padx=10, pady=10)
-        MpkMan().gui()
-        if settings.custom_system == 'Android' and os.geteuid() != 0:
-            ask_win(lang.warn16, wait=False)
-            if call(['su', '-c', 'echo ok'], extra_path=False) != 0:
-                ask_win(lang.warn17)
-        if settings.custom_system == 'Android' and os.geteuid() == 0:
-            os.makedirs('/data/local/MIO', exist_ok=True)
+def main() -> None:
+    root = create_main_window()
+    anim = LoadAnim(root)
+    anim.start()
 
+    # Запуск длительной задачи в отдельном потоке
+    task_thread = Thread(target=perform_long_task)
+    task_thread.start()
+
+    # Инициализация GUI
+    initialize_splash_screen(root)
+    root.mainloop()
+
+    # Остановка анимации загрузки после завершения основной программы
+    anim.stop()
+
+if __name__ == "__main__":
+    main()
 
     def tab_content(self):
 
