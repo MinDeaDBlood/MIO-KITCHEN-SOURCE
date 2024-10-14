@@ -33,7 +33,7 @@ from Magisk import Magisk_patch
 
 try:
     from pyaxmlparser import APK
-except (OSError, ValueError):
+except:
     APK = print
 from unkdz import KDZFileTools
 
@@ -516,7 +516,7 @@ class ToolBox(ttk.Frame):
             for i in self.controls:
                 try:
                     i.destroy()
-                except (OSError, ValueError):
+                except:
                     logging.exception('Bugs')
 
         def dnd(self, file_list: list):
@@ -530,7 +530,7 @@ class ToolBox(ttk.Frame):
             if isinstance(file, bytes):
                 try:
                     file = file_list[0].decode('utf-8')
-                except (OSError, ValueError):
+                except:
                     file = file_list[0].decode('gbk')
             if not os.path.isfile(file) or not file:
                 self.put_info('Warn', 'Please Select A File')
@@ -832,18 +832,18 @@ class Tool(Tk):
                             style="Toggle.TButton").pack(padx=10, pady=10, fill=X)
         def get_cache_size():
             size = 0
-            apk_files = [os.path.join(root, file) for root, _, files in os.walk(temp):
+            for root, _, files in os.walk(temp):
                 try:
                     size += sum([os.path.getsize(os.path.join(root, name)) for name in files if
                                       not os.path.islink(os.path.join(root, name))])
-                except (OSError, ValueError):
+                except:
                     logging.exception("Bugs")
             return size
 
         def clean_cache():
             try:
                 re_folder(temp, quiet=True)
-            except (OSError, ValueError):
+            except:
                 logging.exception("Bugs")
             slo2.configure(text=hum_convert(get_cache_size()))
 
@@ -2887,7 +2887,7 @@ def packsuper(sparse, dbfz, size, set_, lb: list, del_=0, return_cmd=0, attrib='
         if not os.path.exists(work + part + '.img') and os.path.exists(work + part + '_a.img'):
             try:
                 os.rename(work + part + '_a.img', work + part + '.img')
-            except (OSError, ValueError):
+            except:
                 logging.exception('Bugs')
     command = ['lpmake', '--metadata-size', '65536', '-super-name', 'super', '-metadata-slots']
     if set_.get() == 1:
@@ -3931,7 +3931,7 @@ class Dirsize:
         self.list_f = list_f
         self.dname = os.path.basename(dir_)
         self.size = 0
-        apk_files = [os.path.join(root, file) for root, _, files in os.walk(dir_):
+        for root, _, files in os.walk(dir_):
             try:
                 self.size += sum([os.path.getsize(os.path.join(root, name)) for name in files if
                                   not os.path.islink(os.path.join(root, name))])
@@ -4280,13 +4280,13 @@ class CustomTable(ttk.Frame):
         self.index += 1
         try:
             img = PhotoImage(open_img(BytesIO(icon_data)).resize((50, 50)))
-        except (OSError, ValueError):
+        except:
             img = PhotoImage(data=images.none_byte)
         self.images[self.index] = img
 
         label_widget = ttk.Label(frame, image=self.images[self.index])
         label_widget.pack(side=LEFT, padx=5)
-args = [i if i else 'Unknown' for i in args]
+        args_n = []
         for i in args:
             if i:
                 args_n.append(i)
@@ -4312,7 +4312,7 @@ class ApkManager(Toplevel):
         if not ProjectManager.exist():
             warn_win(lang.warn1)
         work = ProjectManager.current_work_path()
-        apk_files = [os.path.join(root, file) for root, _, files in os.walk(ProjectManager.current_work_path(), topdown=True):
+        for root, _, files in os.walk(ProjectManager.current_work_path(), topdown=True):
             for file in files:
                 apk_file = os.path.join(root, file)
                 if not apk_file.endswith(".apk"):
