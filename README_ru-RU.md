@@ -1,7 +1,7 @@
 # MIO-KITCHEN-SOURCE #
-![Баннер](https://github.com/ColdWindScholar/MIO-KITCHEN-SOURCE/blob/a9bcfdf613ad28e82f7899e3d420d76ecfea174c/splash.png)
+![Banner](https://github.com/ColdWindScholar/MIO-KITCHEN-SOURCE/blob/a9bcfdf613ad28e82f7899e3d420d76ecfea174c/splash.png)
 #### Программа для работы с прошивками, написанная на Python
-> [!ВНИМАНИЕ!]
+> [!CAUTION]
 > Незаконное коммерческое использование запрещено
 ***
 ## Эта программа используется во многих проектах с открытым исходным кодом. Огромное спасибо разработчикам!
@@ -29,15 +29,21 @@
 | Windows | x86_64 x86 amd64 arm64 |
 | Macos   | Arm64  X86             |
 
-
-## Начать использовать
-> [!ПРИМЕЧАНИЕ]
+## * Уведомление для macOS
+``` shell
+# Если вы хотите использовать [brotli], вам понадобится:
+# Возможно, в вашей системе он уже есть, поэтому сначала проверьте.
+#
+предварительно установите gettext.
+```
+## Начальные шаги по работе с программой
+> [!NOTE]
 > В настоящее время поддерживается только Python версии 3.8 и новее!
 ### Предварительные требования
 <details><summary>macOS</summary>
 
 ```` shell
-установка python-tk python3  tcl-tk
+python-tk python3  tcl-tk
 python3 -m pip install -U --force-reinstall pip
 pip install -r requirements.txt
 ````
@@ -84,7 +90,7 @@ python build.py
 ### Перевод и адаптация на португальский (Бразилия): [igor](https://github.com/igormiguell)
 ### Перевод и адаптация на немецкий: [keldrion](https://github.com/keldrion)
 ### Перевод и адаптация на русский: [Rayne Kobayashi](https://github.com/MinDeaDBlood)
-### И многе чего еще...
+### И много чего еще...
 ### Спасибо таким людям, как вы, за помощь!
 ***
 # О программе
