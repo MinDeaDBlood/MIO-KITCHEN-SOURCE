@@ -18,3 +18,9 @@ msgstr "AI ENGINE"
 
 msgid "OK"
 msgstr "OK"
+
+msgid "No idea about:\n\t%s\nPlease Report It To us."
+msgstr "No idea about:\n\t%s\nPlease Report It To us."
+
+msgid "Unknown"
+msgstr "Unknown"
