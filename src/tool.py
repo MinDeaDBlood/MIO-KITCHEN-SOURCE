@@ -110,15 +110,10 @@ except ImportError:
 try:
     from .core.pycase import ensure_dir_case_sensitive
 except ImportError:
-    ensure_dir_case_sensitive = lambda *x: print(f'Cannot sensitive {x}, Not Supported')
+    ensure_dir_case_sensitive = lambda *x: print(
+        f'Cannot sensitive {x}, Not Supported')
 
 cwd_path = utils.prog_path
-
-
-
-
-
-
 
 
 class LoadAnim:
@@ -145,7 +140,8 @@ class LoadAnim:
         if ind == len(self.frames):
             ind = 0
         self.master.gif_label.configure(image=self.frame)
-        self.gifs.append(self.master.gif_label.after(30, self.run, ind))
+        self.gifs.append(
+            self.master.gif_label.after(30, self.run, ind))
 
     def get_task_num(self):
         if self.task_num_index > self.task_num_max:
@@ -181,10 +177,12 @@ class LoadAnim:
         def call_func(*args, **kwargs):
             create_thread(self.run())
             task_num = self.get_task_num()
-            task_real = threading.Thread(target=func, args=args, kwargs=kwargs, daemon=True)
+            task_real = threading.Thread(
+                target=func, args=args, kwargs=kwargs, daemon=True)
             info = [func.__name__, args, task_real]
             if task_num in self.tasks:
-                print(f"The Same task_num {task_num} was used by {task_real.native_id} with args {info[2]}...\n")
+                print(
+                    f"The Same task_num {task_num} was used by {task_real.native_id} with args {info[2]}...\n")
                 return
             else:
                 self.tasks[task_num] = info
@@ -204,24 +202,31 @@ def warn_win(text: str = '', color: str = 'orange', title: str = "Warn", wait: i
     ask.configure(text=title)
     ask.place(relx=0.5, rely=0.5, anchor="nw")
     frame_inner = ttk.Frame(ask)
-    frame_inner.pack(expand=True, fill=BOTH, padx=20, pady=20)
-    ttk.Label(frame_inner, text=text, font=(None, 20), foreground=color).pack(side=TOP)
+    frame_inner.pack(
+        expand=True, fill=BOTH, padx=20, pady=20)
+    ttk.Label(frame_inner, text=text, font=(
+        None, 20), foreground=color).pack(side=TOP)
     ask.after(wait, ask.destroy)
+
 
 class ToolBox(ttk.Frame):
     def __init__(self, master):
         super().__init__(master=master)
-        self.__on_mouse = lambda event: self.canvas.yview_scroll(-1 * int(event.delta / 120), "units")
+        self.__on_mouse = lambda event: self.canvas.yview_scroll(
+            -1 * int(event.delta / 120), "units")
 
     def pack_basic(self):
         scrollbar = Scrollbar(self, orient='vertical')
-        scrollbar.pack(side='right', fill='y', padx=10, pady=10)
-        self.canvas = Canvas(self, yscrollcommand=scrollbar.set)
+        scrollbar.pack(
+            side='right', fill='y', padx=10, pady=10)
+        self.canvas = Canvas(
+            self, yscrollcommand=scrollbar.set)
         self.canvas.pack_propagate(False)
         self.canvas.pack(fill='both', expand=True)
         scrollbar.config(command=self.canvas.yview)
         self.label_frame = Frame(self.canvas)
-        self.canvas.create_window((0, 0), window=self.label_frame, anchor='nw')
+        self.canvas.create_window(
+            (0, 0), window=self.label_frame, anchor='nw')
         self.canvas.bind_all("<MouseWheel>",
                              lambda event: self.__on_mouse(event))
 
@@ -251,7 +256,8 @@ class ToolBox(ttk.Frame):
 
     def update_ui(self):
         self.label_frame.update_idletasks()
-        self.canvas.config(scrollregion=self.canvas.bbox('all'), highlightthickness=0)
+        self.canvas.config(scrollregion=self.canvas.bbox(
+            'all'), highlightthickness=0)
 
     class MagiskPatcher(Toplevel):
         def __init__(self):
@@ -279,7 +285,8 @@ class ToolBox(ttk.Frame):
             self.focus_force()
 
         def patch(self):
-            self.patch_bu.configure(state="disabled", text=lang.running)
+            self.patch_bu.configure(
+                state="disabled", text=lang.running)
             local_path = str(os.path.join(temp, v_code()))
             re_folder(local_path)
             magiskboot = settings.tool_bin + os.sep + "magiskboot"
@@ -296,9 +303,12 @@ class ToolBox(ttk.Frame):
                                                    os.path.basename(
                                                        self.boot_file.get()[:-4]) + v_code() + "_magisk_patched.img")
                     os.rename(m.output, output_file)
-                    print(f"Done!Patched Boot:{output_file}")
-                    info_win(f"Patched Boot:\n{output_file}")
-            self.patch_bu.configure(state="normal", text=lang.patch)
+                    print(
+                        f"Done!Patched Boot:{output_file}")
+                    info_win(
+                        f"Patched Boot:\n{output_file}")
+            self.patch_bu.configure(
+                state="normal", text=lang.patch)
 
         def gui(self):
             ttk.Label(self, text=lang.magisk_patch).pack()
@@ -306,8 +316,10 @@ class ToolBox(ttk.Frame):
             ft.pack(fill=X)
 
             self.boot_file = StringVar()
-            ttk.Label(ft, text=lang.boot_file).pack(side='left', padx=10, pady=10)
-            ttk.Entry(ft, textvariable=self.boot_file).pack(side='left', padx=5, pady=5)
+            ttk.Label(ft, text=lang.boot_file).pack(
+                side='left', padx=10, pady=10)
+            ttk.Entry(ft, textvariable=self.boot_file).pack(
+                side='left', padx=5, pady=5)
             ttk.Button(ft, text=lang.text28,
                        command=lambda: self.boot_file.set(
                            filedialog.askopenfilename())).pack(side='left', padx=10, pady=10)
@@ -316,15 +328,18 @@ class ToolBox(ttk.Frame):
             ft.pack(fill=BOTH)
 
             self.magisk_apk = StringVar()
-            ttk.Label(ft, text=lang.magisk_apk).pack(side='left', padx=10, pady=10)
-            ttk.Entry(ft, textvariable=self.magisk_apk).pack(side='left', padx=5, pady=5)
+            ttk.Label(ft, text=lang.magisk_apk).pack(
+                side='left', padx=10, pady=10)
+            ttk.Entry(ft, textvariable=self.magisk_apk).pack(
+                side='left', padx=5, pady=5)
             ttk.Button(ft, text=lang.text28,
                        command=lambda: self.chose_file_refresh()).pack(side='left', padx=10, pady=10)
             ft = ttk.Frame(self)
             ft.pack(fill=X)
 
             self.magisk_arch = StringVar(value='arm64-v8a')
-            ttk.Label(ft, text=lang.arch).pack(side='left', padx=10, pady=10)
+            ttk.Label(ft, text=lang.arch).pack(
+                side='left', padx=10, pady=10)
             self.archs = ttk.Combobox(ft, state='readonly', textvariable=self.magisk_arch,
                                       values=["arm64-v8a"])
             self.archs.pack(side='left', padx=5, pady=5)
@@ -352,7 +367,8 @@ class ToolBox(ttk.Frame):
                             variable=self.KEEPFORCEENCRYPT).pack(fill=X, padx=5, pady=5, side=LEFT)
             ttk.Checkbutton(ft, onvalue=True, offvalue=False, text='RECOVERYMODE', variable=self.RECOVERYMODE).pack(
                 fill=X, padx=5, pady=5, side=LEFT)
-            self.patch_bu = ttk.Button(self, text=lang.patch, style='Accent.TButton', command=lambda: create_thread(self.patch))
+            self.patch_bu = ttk.Button(
+                self, text=lang.patch, style='Accent.TButton', command=lambda: create_thread(self.patch))
             self.patch_bu.pack(fill=X, padx=5, pady=5)
 
     class SelinuxAuditAllow(Toplevel):
@@ -365,8 +381,10 @@ class ToolBox(ttk.Frame):
         def gui(self):
             f = Frame(self)
             self.choose_file = StringVar(value='')
-            ttk.Label(f, text=lang.log_file).pack(side=LEFT, fill=X, padx=5, pady=5)
-            ttk.Entry(f, textvariable=self.choose_file).pack(side=LEFT, fill=X, padx=5, pady=5)
+            ttk.Label(f, text=lang.log_file).pack(
+                side=LEFT, fill=X, padx=5, pady=5)
+            ttk.Entry(f, textvariable=self.choose_file).pack(
+                side=LEFT, fill=X, padx=5, pady=5)
             ttk.Button(f, text=lang.choose, command=lambda: self.choose_file.set(
                 filedialog.askopenfilename(title=lang.text25, filetypes=(
                     ('Log File', "*.log"), ('Log File', "*.txt")))) == self.lift()).pack(side=LEFT,
@@ -376,25 +394,32 @@ class ToolBox(ttk.Frame):
             ##
             f2 = Frame(self)
             self.output_dir = StringVar(value='')
-            ttk.Label(f2, text=lang.output_folder).pack(side=LEFT, fill=X, padx=5, pady=5)
-            ttk.Entry(f2, textvariable=self.output_dir).pack(side=LEFT, fill=X, padx=5, pady=5)
+            ttk.Label(f2, text=lang.output_folder).pack(
+                side=LEFT, fill=X, padx=5, pady=5)
+            ttk.Entry(f2, textvariable=self.output_dir).pack(
+                side=LEFT, fill=X, padx=5, pady=5)
             ttk.Button(f2, text=lang.choose,
                        command=lambda: self.output_dir.set(filedialog.askdirectory()) == self.lift()).pack(side=LEFT,
                                                                                                            fill=X,
                                                                                                            padx=5,
                                                                                                            pady=5)
             f2.pack(padx=5, pady=5, anchor='nw', fill=X)
-            ttk.Label(self, text='By github@Deercall').pack()
-            self.button = ttk.Button(self, text=lang.text22, command=self.run, style='Accent.TButton')
+            ttk.Label(
+                self, text='By github@Deercall').pack()
+            self.button = ttk.Button(
+                self, text=lang.text22, command=self.run, style='Accent.TButton')
             self.button.pack(padx=5, pady=5, fill=X)
 
         def run(self):
             if self.button.cget('text') == lang.done:
                 self.destroy()
             else:
-                self.button.configure(text=lang.running, state='disabled')
-                create_thread(selinux_audit_allow, self.choose_file.get(), self.output_dir.get())
-                self.button.configure(text=lang.done, state='normal', style='')
+                self.button.configure(
+                    text=lang.running, state='disabled')
+                create_thread(selinux_audit_allow, self.choose_file.get(
+                ), self.output_dir.get())
+                self.button.configure(
+                    text=lang.done, state='normal', style='')
 
     class FileBytes(Toplevel):
         def __init__(self):
@@ -407,25 +432,33 @@ class ToolBox(ttk.Frame):
             self.f = Frame(self)
             self.f.pack(pady=5, padx=5, fill=X)
             self.origin_size = ttk.Entry(self.f)
-            self.origin_size.bind("<KeyRelease>", lambda *x: self.calc())
+            self.origin_size.bind(
+                "<KeyRelease>", lambda *x: self.calc())
             self.origin_size.pack(side='left', padx=5)
-            self.h = ttk.Combobox(self.f, values=self.values, state='readonly', width=3)
+            self.h = ttk.Combobox(
+                self.f, values=self.values, state='readonly', width=3)
             self.h.current(0)
-            self.h.bind("<<ComboboxSelected>>", lambda *x: self.calc())
+            self.h.bind("<<ComboboxSelected>>",
+                        lambda *x: self.calc())
             self.h.pack(side='left', padx=5)
-            Label(self.f, text='=').pack(side='left', padx=5)
+            Label(self.f, text='=').pack(
+                side='left', padx=5)
             self.result_size = ttk.Entry(self.f)
             self.result_size.pack(side='left', padx=5)
-            self.f_ = ttk.Combobox(self.f, values=self.values, state='readonly', width=3)
+            self.f_ = ttk.Combobox(
+                self.f, values=self.values, state='readonly', width=3)
             self.f_.current(0)
-            self.f_.bind("<<ComboboxSelected>>", lambda *x: self.calc())
+            self.f_.bind("<<ComboboxSelected>>",
+                         lambda *x: self.calc())
             self.f_.pack(side='left', padx=5)
-            ttk.Button(self, text=lang.text17, command=self.destroy).pack(fill=BOTH, padx=5, pady=5)
+            ttk.Button(self, text=lang.text17, command=self.destroy).pack(
+                fill=BOTH, padx=5, pady=5)
             move_center(self)
 
         def calc(self):
             self.result_size.delete(0, tk.END)
-            self.result_size.insert(0, self.__calc(self.h.get(), self.f_.get(), self.origin_size.get()))
+            self.result_size.insert(0, self.__calc(
+                self.h.get(), self.f_.get(), self.origin_size.get()))
 
         @staticmethod
         def __calc(origin: str, convert: str, size) -> str:
@@ -454,28 +487,35 @@ class ToolBox(ttk.Frame):
             self.gui()
             self.geometry("400x450")
             self.resizable(False, False)
-            self.dnd = lambda file_list:create_thread(self.__dnd, file_list)
+            self.dnd = lambda file_list: create_thread(
+                self.__dnd, file_list)
             move_center(self)
 
         def gui(self):
             a = ttk.LabelFrame(self, text='Drop')
-            (tl := ttk.Label(a, text=lang.text132_e)).pack(fill=BOTH, padx=5, pady=5)
-            tl.bind('<Button-1>', lambda *x: self.dnd([filedialog.askopenfilename()]))
+            (tl := ttk.Label(a, text=lang.text132_e)).pack(
+                fill=BOTH, padx=5, pady=5)
+            tl.bind(
+                '<Button-1>', lambda *x: self.dnd([filedialog.askopenfilename()]))
             a.pack(side=TOP, padx=5, pady=5, fill=BOTH)
             a.drop_target_register(DND_FILES)
-            a.dnd_bind('<<Drop>>', lambda x: self.dnd([x.data]))
+            a.dnd_bind(
+                '<<Drop>>', lambda x: self.dnd([x.data]))
             self.b = ttk.LabelFrame(self, text='INFO')
             self.b.pack(fill=BOTH, side=TOP)
 
         def put_info(self, name, value):
             f = Frame(self.b)
             self.controls.append(f)
-            ttk.Label(f, text=f"{name}:", width=7).pack(fill=X, side='left')
+            ttk.Label(f, text=f"{name}:", width=7).pack(
+                fill=X, side='left')
             f_e = ttk.Entry(f)
             f_e.insert(0, value)
-            f_e.pack(fill=X, side='left', padx=5, pady=5, expand=True)
+            f_e.pack(fill=X, side='left',
+                     padx=5, pady=5, expand=True)
             f_b = ttk.Button(f, text=lang.scopy)
-            f_b.configure(command=lambda e=f_e, b=f_b: self.copy_to_clipboard(e.get(), b))
+            f_b.configure(
+                command=lambda e=f_e, b=f_b: self.copy_to_clipboard(e.get(), b))
             f_b.pack(fill=X, side='left', padx=5, pady=5)
             f.pack(fill=X)
 
@@ -484,7 +524,8 @@ class ToolBox(ttk.Frame):
             b.configure(text=lang.scopied, state='disabled')
             win.clipboard_clear()
             win.clipboard_append(value)
-            b.after(1500, lambda: b.configure(text=lang.scopy, state='normal'))
+            b.after(1500, lambda: b.configure(
+                text=lang.scopy, state='normal'))
 
         def clear(self):
             for i in self.controls:
@@ -504,16 +545,21 @@ class ToolBox(ttk.Frame):
                 except:
                     file = file_list[0].decode('gbk')
             if not os.path.isfile(file) or not file:
-                self.put_info('Warn', 'Please Select A File')
+                self.put_info(
+                    'Warn', 'Please Select A File')
                 return
             self.put_info(lang.name, os.path.basename(file))
             self.put_info(lang.path, file)
             self.put_info(lang.type, gettype(file))
-            self.put_info(lang.size, hum_convert(os.path.getsize(file)))
-            self.put_info(f"{lang.size}(B)", os.path.getsize(file))
-            self.put_info(lang.time, time.ctime(os.path.getctime(file)))
+            self.put_info(lang.size, hum_convert(
+                os.path.getsize(file)))
+            self.put_info(f"{lang.size}(B)",
+                          os.path.getsize(file))
+            self.put_info(lang.time, time.ctime(
+                os.path.getctime(file)))
             self.put_info("MD5", calculate_md5_file(file))
-            self.put_info("SHA256", calculate_sha256_file(file))
+            self.put_info(
+                "SHA256", calculate_sha256_file(file))
 
     class TrimImage(Toplevel):
         def __init__(self):
@@ -524,24 +570,32 @@ class ToolBox(ttk.Frame):
             self.resizable(False, False)
 
         def gui(self):
-            ttk.Label(self, text=lang.help_trim_image).pack(padx=5, pady=5)
+            ttk.Label(self, text=lang.help_trim_image).pack(
+                padx=5, pady=5)
             f = Frame(self)
             self.choose_file = StringVar(value='')
-            ttk.Label(f, text=lang.text77).pack(side=LEFT, fill=X, padx=5, pady=5)
-            self.path_edit = ttk.Entry(f, textvariable=self.choose_file)
-            self.path_edit.pack(side=LEFT, fill=X, padx=5, pady=5, expand=True)
+            ttk.Label(f, text=lang.text77).pack(
+                side=LEFT, fill=X, padx=5, pady=5)
+            self.path_edit = ttk.Entry(
+                f, textvariable=self.choose_file)
+            self.path_edit.pack(
+                side=LEFT, fill=X, padx=5, pady=5, expand=True)
             self.choose_button = ttk.Button(f, text=lang.choose, command=lambda: self.choose_file.set(
                 filedialog.askopenfilename(title=lang.text25)) == self.lift())
-            self.choose_button.pack(side=LEFT, fill=X, padx=5, pady=5)
+            self.choose_button.pack(
+                side=LEFT, fill=X, padx=5, pady=5)
             f.pack(padx=5, pady=5, anchor='nw', fill=X)
-            self.button = ttk.Button(self, text=lang.text22, command=self.run, style='Accent.TButton')
+            self.button = ttk.Button(
+                self, text=lang.text22, command=self.run, style='Accent.TButton')
             self.button.pack(padx=5, pady=5, fill=X)
 
         def do_trim(self, buff_size: int = 8192):
-            orig_size = file_size = os.path.getsize(self.choose_file.get())
+            orig_size = file_size = os.path.getsize(
+                self.choose_file.get())
             zeros_ = bytearray(buff_size)
             with open(self.choose_file.get(), 'rb') as f:
-                self.button.configure(text=lang.running + ' - 0%')
+                self.button.configure(
+                    text=lang.running + ' - 0%')
                 update_ui = 3000
                 while file_size:
                     n = min(file_size, buff_size)
@@ -562,11 +616,13 @@ class ToolBox(ttk.Frame):
                     if update_ui == 0:
                         update_ui = 3000
                         percentage = 100 - file_size * 100 // orig_size
-                        self.button.configure(text=lang.running + f' - {percentage}%')
+                        self.button.configure(
+                            text=lang.running + f' - {percentage}%')
                         self.update_idletasks()
             os.truncate(self.choose_file.get(), file_size)
             c = orig_size - file_size
-            info_win(lang.trim_image_summary % (c, hum_convert(c)))
+            info_win(lang.trim_image_summary %
+                     (c, hum_convert(c)))
 
         def run(self):
             if self.button.cget('text') == lang.done:
@@ -574,11 +630,13 @@ class ToolBox(ttk.Frame):
                 return
             if not os.path.isfile(self.choose_file.get()):
                 return
-            self.button.configure(text=lang.running, state='disabled')
+            self.button.configure(
+                text=lang.running, state='disabled')
             self.path_edit.configure(state='disabled')
             self.choose_button.configure(state='disabled')
             self.do_trim()
-            self.button.configure(text=lang.done, state='normal', style='')
+            self.button.configure(
+                text=lang.done, state='normal', style='')
 
 
 class Tool(Tk):
@@ -598,25 +656,32 @@ class Tool(Tk):
         self.tsk.config(text=time.strftime("%H:%M:%S"))
         self.after(1000, self.get_time)
 
+    def open_transparency_settings(self):
+        TransparencySettings(self)
+
     def get_frame(self, title):
         frame = ttk.LabelFrame(self.frame_bg, text=title)
         frame.pack(padx=10, pady=10)
-        ttk.Button(frame, text=lang.text17, command=frame.destroy).pack(anchor="ne")
+        ttk.Button(frame, text=lang.text17,
+                   command=frame.destroy).pack(anchor="ne")
         self.update_frame()
         self.scrollbar.config(command=self.canvas1.yview)
         return frame
 
     def update_frame(self):
         self.frame_bg.update_idletasks()
-        self.canvas1.config(scrollregion=self.canvas1.bbox('all'))
+        self.canvas1.config(
+            scrollregion=self.canvas1.bbox('all'))
 
     def gui(self):
         if os.name == 'posix' and os.geteuid() != 0:
             print(lang.warn13)
         self.sub_win2 = ttk.Frame(self)
         self.sub_win3 = ttk.Frame(self)
-        self.sub_win3.pack(fill=BOTH, side=LEFT, expand=True)
-        self.sub_win2.pack(fill=BOTH, side=LEFT, expand=True)
+        self.sub_win3.pack(
+            fill=BOTH, side=LEFT, expand=True)
+        self.sub_win2.pack(
+            fill=BOTH, side=LEFT, expand=True)
         self.notepad = ttk.Notebook(self.sub_win2)
         self.tab = ttk.Frame(self.notepad)
         self.tab2 = ttk.Frame(self.notepad)
@@ -632,12 +697,16 @@ class Tool(Tk):
         self.notepad.add(self.tab4, text=lang.text14)
         self.notepad.add(self.tab5, text=lang.text15)
         self.notepad.add(self.tab6, text=lang.toolbox)
-        self.scrollbar = ttk.Scrollbar(self.tab5, orient=tk.VERTICAL)
+        self.scrollbar = ttk.Scrollbar(
+            self.tab5, orient=tk.VERTICAL)
         self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.canvas1 = Canvas(self.tab5, yscrollcommand=self.scrollbar.set)
-        self.canvas1.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.canvas1 = Canvas(
+            self.tab5, yscrollcommand=self.scrollbar.set)
+        self.canvas1.pack(
+            side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.frame_bg = ttk.Frame(self.canvas1)
-        self.canvas1.create_window((0, 0), window=self.frame_bg, anchor='nw')
+        self.canvas1.create_window(
+            (0, 0), window=self.frame_bg, anchor='nw')
         self.canvas1.config(highlightthickness=0)
         self.tab4_content()
         self.tab6_content()
@@ -645,31 +714,42 @@ class Tool(Tk):
         self.tab_content()
         self.notepad.pack(fill=BOTH, expand=True)
         self.rzf = ttk.Frame(self.sub_win3)
-        self.tsk = Label(self.sub_win3, text="MIO-KITCHEN", font=(None, 15))
+        self.tsk = Label(
+            self.sub_win3, text="MIO-KITCHEN", font=(None, 15))
         self.tsk.pack(padx=10, pady=10, side='top')
-        tr = ttk.LabelFrame(self.sub_win3, text=lang.text131)
-        tr2 = Label(tr, text=lang.text132 + '\n(ozip zip tar.md5 tar tar.gz kdz dz ops ofp ext4 erofs boot img)')
+        tr = ttk.LabelFrame(
+            self.sub_win3, text=lang.text131)
+        tr2 = Label(tr, text=lang.text132 +
+                    '\n(ozip zip tar.md5 tar tar.gz kdz dz ops ofp ext4 erofs boot img)')
         tr2.pack(padx=10, pady=10, side='bottom')
-        tr.bind('<Button-1>', lambda *x: dndfile([filedialog.askopenfilename()]))
-        tr.pack(padx=5, pady=5, side='top', expand=True, fill=BOTH)
-        tr2.bind('<Button-1>', lambda *x: dndfile([filedialog.askopenfilename()]))
-        tr2.pack(padx=5, pady=5, side='top', expand=True, fill=BOTH)
+        tr.bind(
+            '<Button-1>', lambda *x: dndfile([filedialog.askopenfilename()]))
+        tr.pack(padx=5, pady=5, side='top',
+                expand=True, fill=BOTH)
+        tr2.bind(
+            '<Button-1>', lambda *x: dndfile([filedialog.askopenfilename()]))
+        tr2.pack(padx=5, pady=5, side='top',
+                 expand=True, fill=BOTH)
         self.scroll = ttk.Scrollbar(self.rzf)
         self.show = Text(self.rzf)
         self.show.pack(side=LEFT, fill=BOTH, expand=True)
         sys.stdout = StdoutRedirector(self.show)
-        sys.stderr = StdoutRedirector(self.show, error_=True)
+        sys.stderr = StdoutRedirector(
+            self.show, error_=True)
         tr.drop_target_register(DND_FILES)
         tr.dnd_bind('<<Drop>>', lambda x: dndfile([x.data]))
         tr2.drop_target_register(DND_FILES)
-        tr2.dnd_bind('<<Drop>>', lambda x: dndfile([x.data]))
+        tr2.dnd_bind(
+            '<<Drop>>', lambda x: dndfile([x.data]))
         self.scroll.pack(side=LEFT, fill=BOTH)
         self.scroll.config(command=self.show.yview)
         self.show.config(yscrollcommand=self.scroll.set)
-        self.rzf.pack(padx=5, pady=5, fill=BOTH, side='bottom')
+        self.rzf.pack(padx=5, pady=5,
+                      fill=BOTH, side='bottom')
         self.gif_label = Label(self.rzf)
         self.gif_label.pack(padx=10, pady=10)
-        ttk.Button(self.rzf, text=lang.text105, command=lambda: self.show.delete(1.0, tk.END)).pack(padx=10, pady=10)
+        ttk.Button(self.rzf, text=lang.text105, command=lambda: self.show.delete(
+            1.0, tk.END)).pack(padx=10, pady=10)
         MpkMan().gui()
         if settings.custom_system == 'Android' and os.geteuid() != 0:
             ask_win(lang.warn16, wait=False)
@@ -680,15 +760,20 @@ class Tool(Tk):
 
     def tab_content(self):
         global kemiaojiang
-        kemiaojiang_img = open_img(open(f'{cwd_path}/bin/kemiaojiang.png', 'rb'))
-        kemiaojiang = PhotoImage(kemiaojiang_img.resize((280, 540)))
-        Label(self.tab, image=kemiaojiang).pack(side='left', padx=0, expand=True)
+        kemiaojiang_img = open_img(
+            open(f'{cwd_path}/bin/kemiaojiang.png', 'rb'))
+        kemiaojiang = PhotoImage(
+            kemiaojiang_img.resize((280, 540)))
+        Label(self.tab, image=kemiaojiang).pack(
+            side='left', padx=0, expand=True)
         Label(self.tab, text="Ambassador: KeMiaoJiang\nPainter: HY-惠\nWelcome To MIO-KITCHEN", justify='left',
               foreground='#87CEFA', font=(None, 12)).pack(side='top', padx=5, pady=120, expand=True)
 
     def tab6_content(self):
-        ttk.Label(self.tab6, text=lang.toolbox, font=(None, 20)).pack(padx=10, pady=10, fill=BOTH)
-        ttk.Separator(self.tab6, orient=HORIZONTAL).pack(padx=10, pady=10, fill=X)
+        ttk.Label(self.tab6, text=lang.toolbox, font=(
+            None, 20)).pack(padx=10, pady=10, fill=BOTH)
+        ttk.Separator(self.tab6, orient=HORIZONTAL).pack(
+            padx=10, pady=10, fill=X)
         tool_box = ToolBox(self.tab6)
         tool_box.gui()
         tool_box.pack(fill=BOTH, expand=True)
@@ -709,26 +794,35 @@ class Tool(Tk):
 
         def update_angle():
             self.rotate_angle -= 10
-            canvas.itemconfigure(text_item, angle=self.rotate_angle)
+            canvas.itemconfigure(
+                text_item, angle=self.rotate_angle)
 
         canvas = tk.Canvas(self.tab4, width=400, height=100)
         canvas.pack()
-        text_item = canvas.create_text(200, 50, text='MIO-KITCHEN', font=('Arial', 30), fill='white')
+        text_item = canvas.create_text(
+            200, 50, text='MIO-KITCHEN', font=('Arial', 30), fill='white')
 
-        canvas.tag_bind(text_item, '<B1-Motion>', lambda event: update_angle())
-        canvas.tag_bind(text_item, '<Button-1>', lambda *x: canvas.itemconfigure(text_item, fill=getColor()))
+        canvas.tag_bind(
+            text_item, '<B1-Motion>', lambda event: update_angle())
+        canvas.tag_bind(text_item, '<Button-1>',
+                        lambda *x: canvas.itemconfigure(text_item, fill=getColor()))
 
-        Label(self.tab4, text=lang.text111, font=(None, 15), fg='#00BFFF').pack(padx=10, pady=10)
+        Label(self.tab4, text=lang.text111, font=(
+            None, 15), fg='#00BFFF').pack(padx=10, pady=10)
         Label(self.tab4,
-              text=lang.text128.format(settings.version, sys.version[:6], platform.system(), machine()),
+              text=lang.text128.format(
+                  settings.version, sys.version[:6], platform.system(), machine()),
               font=(None, 11), fg='#00aaff').pack(padx=10, pady=10)
         ttk.Label(self.tab4, text=f"{settings.language} By {lang.language_file_by}", foreground='orange',
                   background='gray').pack()
-        Label(self.tab4, text=lang.text110, font=(None, 10)).pack(padx=10, pady=10, side='bottom')
-        ttk.Label(self.tab4, text=lang.t63, style="Link.TLabel").pack()
+        Label(self.tab4, text=lang.text110, font=(None, 10)).pack(
+            padx=10, pady=10, side='bottom')
+        ttk.Label(self.tab4, text=lang.t63,
+                  style="Link.TLabel").pack()
         link = ttk.Label(self.tab4, text="Github: MIO-KITCHEN-SOURCE", cursor="hand2",
                          style="Link.TLabel")
-        link.bind("<Button-1>", lambda *x: openurl("https://github.com/ColdWindScholar/MIO-KITCHEN-SOURCE"))
+        link.bind("<Button-1>", lambda *x: openurl(
+            "https://github.com/ColdWindScholar/MIO-KITCHEN-SOURCE"))
         link.pack()
 
     def support(self):
@@ -742,7 +836,8 @@ class Tool(Tk):
               font=(None, 20), fg='#008000').pack(padx=10, pady=10)
         self.photo = PhotoImage(data=images.wechat_byte)
         Label(tab, image=self.photo).pack(padx=5, pady=5)
-        Label(tab, text=lang.text109, font=(None, 12), fg='#00aafA').pack(padx=10, pady=10)
+        Label(tab, text=lang.text109, font=(None, 12),
+              fg='#00aafA').pack(padx=10, pady=10)
         ttk.Button(tab, text=lang.text17,
                    command=lambda: tab.destroy() == setattr(states, 'donate_window', False)).pack(
             fill=X, side='bottom')
@@ -750,7 +845,8 @@ class Tool(Tk):
     def setting_tab(self):
         def get_setting_button(item, master, text, on_v='1', off_v='0'):
             a = StringVar(value=getattr(settings, item))
-            a.trace("w", lambda *x: settings.set_value(item, a.get()))
+            a.trace(
+                "w", lambda *x: settings.set_value(item, a.get()))
             ttk.Checkbutton(master, text=text, variable=a, onvalue=on_v,
                             offvalue=off_v,
                             style="Toggle.TButton").pack(padx=10, pady=10, fill=X)
@@ -760,7 +856,7 @@ class Tool(Tk):
             for root, _, files in os.walk(temp):
                 try:
                     size += sum([os.path.getsize(os.path.join(root, name)) for name in files if
-                                 not os.path.islink(os.path.join(root, name))])
+                                  not os.path.islink(os.path.join(root, name))])
                 except:
                     logging.exception("Bugs")
             return size
@@ -770,7 +866,8 @@ class Tool(Tk):
                 re_folder(temp, quiet=True)
             except:
                 logging.exception("Bugs")
-            slo2.configure(text=hum_convert(get_cache_size()))
+            slo2.configure(
+                text=hum_convert(get_cache_size()))
 
         self.show_local = StringVar()
         self.show_local.set(settings.path)
@@ -783,66 +880,90 @@ class Tool(Tk):
         sf4 = ttk.Frame(Setting_Frame.label_frame, width=20)
         sf5 = ttk.Frame(Setting_Frame.label_frame)
         sf6 = ttk.Frame(Setting_Frame.label_frame)
-        ttk.Label(sf1, text=lang.text124).pack(side='left', padx=10, pady=10)
-        self.list2 = ttk.Combobox(sf1, textvariable=theme, state='readonly', values=["light", "dark"])
+        ttk.Label(sf1, text=lang.text124).pack(
+            side='left', padx=10, pady=10)
+        self.list2 = ttk.Combobox(
+            sf1, textvariable=theme, state='readonly', values=["light", "dark"])
         self.list2.pack(padx=10, pady=10, side='left')
-        self.list2.bind('<<ComboboxSelected>>', lambda *x: settings.set_theme())
+        self.list2.bind('<<ComboboxSelected>>',
+                        lambda *x: settings.set_theme())
         ###
-        project_struct = StringVar(value=settings.project_struct)
-        ttk.Label(sf5, text=lang.project_struct).pack(padx=10, pady=10, side='left')
+        project_struct = StringVar(
+            value=settings.project_struct)
+        ttk.Label(sf5, text=lang.project_struct).pack(
+            padx=10, pady=10, side='left')
         ttk.Radiobutton(sf5, text=lang.single, variable=project_struct, value='single').pack(padx=10, pady=10,
                                                                                              side='left')
         ttk.Radiobutton(sf5, text=lang.split, variable=project_struct, value='split').pack(padx=10, pady=10,
                                                                                            side='left')
-        project_struct.trace("w", lambda *x: settings.set_value('project_struct', project_struct.get()))
+        project_struct.trace(
+            "w", lambda *x: settings.set_value('project_struct', project_struct.get()))
         ###
-        ttk.Label(sf3, text=lang.text125).pack(side='left', padx=10, pady=10)
-        slo = ttk.Label(sf3, textvariable=self.show_local, wraplength=200)
+        ttk.Label(sf3, text=lang.text125).pack(
+            side='left', padx=10, pady=10)
+        slo = ttk.Label(
+            sf3, textvariable=self.show_local, wraplength=200)
         slo.bind('<Button-1>', lambda *x: windll.shell32.ShellExecuteW(None, "open", self.show_local.get(), None, None,
                                                                        1) if os.name == 'nt' else ...)
         slo.pack(padx=10, pady=10, side='left')
-        ttk.Button(sf3, text=lang.text126, command=settings.modpath).pack(side="left", padx=10, pady=10)
+        ttk.Button(sf3, text=lang.text126, command=settings.modpath).pack(
+            side="left", padx=10, pady=10)
 
-        ttk.Label(sf2, text=lang.lang).pack(side='left', padx=10, pady=10)
+        ttk.Label(sf2, text=lang.lang).pack(
+            side='left', padx=10, pady=10)
         lb3 = ttk.Combobox(sf2, state='readonly', textvariable=language,
                            values=[str(i.rsplit('.', 1)[0]) for i in
                                    os.listdir(f"{cwd_path}/bin/languages")])
         ###
-        ttk.Label(sf6, text=lang.cache_size).pack(side='left', padx=10, pady=10)
-        slo2 = ttk.Label(sf6, text=hum_convert(get_cache_size()), wraplength=200)
+        ttk.Label(sf6, text=lang.cache_size).pack(
+            side='left', padx=10, pady=10)
+        slo2 = ttk.Label(sf6, text=hum_convert(
+            get_cache_size()), wraplength=200)
         slo2.bind('<Button-1>', lambda *x: windll.shell32.ShellExecuteW(None, "open", self.show_local.get(), None, None,
-                                                                        1) if os.name == 'nt' else ...)
+                                                                       1) if os.name == 'nt' else ...)
         slo2.pack(padx=10, pady=10, side='left')
-        ttk.Button(sf6, text=lang.clean, command=lambda: create_thread(clean_cache)).pack(side="left", padx=10, pady=10)
+        ttk.Button(sf6, text=lang.clean, command=lambda: create_thread(
+            clean_cache)).pack(side="left", padx=10, pady=10)
         context = StringVar(value=settings.contextpatch)
 
         def enable_contextpatch():
             if context.get() == '1':
                 if ask_win2(
                         lang.warn18):
-                    settings.set_value('contextpatch', context.get())
+                    settings.set_value(
+                        'contextpatch', context.get())
                 else:
                     context.set('0')
-                    settings.set_value('contextpatch', context.get())
+                    settings.set_value(
+                        'contextpatch', context.get())
                     enable_cp.configure(state='off')
             else:
-                settings.set_value('contextpatch', context.get())
+                settings.set_value(
+                    'contextpatch', context.get())
 
         context.trace("w", lambda *x: enable_contextpatch())
         get_setting_button('ai_engine', sf4, lang.ai_engine)
         if os.name == 'nt':
-            get_setting_button('treff', sf4, lang.t61)
-        enable_cp = ttk.Checkbutton(sf4, text=lang.context_patch, variable=context, onvalue='1',
-                                    offvalue='0',
-                                    style="Toggle.TButton")
-        enable_cp.pack(padx=10, pady=10, fill=X)
-        get_setting_button('auto_unpack', sf4, lang.auto_unpack)
+            # get_setting_button('treff', sf4, lang.t61)
+            ttk.Button(sf4, text=lang.t61, command=self.open_transparency_settings).pack(
+                padx=10, pady=10, fill=X)
+
+        # enable_cp = ttk.Checkbutton(sf4, text=lang.context_patch, variable=context, onvalue='1',
+        #                            offvalue='0',
+        #                            style="Toggle.TButton")
+        # enable_cp.pack(padx=10, pady=10, fill=X)
+        get_setting_button(
+            'auto_unpack', sf4, lang.auto_unpack)
         lb3.pack(padx=10, pady=10, side='left')
-        lb3.bind('<<ComboboxSelected>>', lambda *x: settings.set_language())
-        for i in [sf1, sf2, sf3, sf5, sf6, sf4]: i.pack(padx=10, pady=7, fill='both')
+        lb3.bind('<<ComboboxSelected>>',
+                 lambda *x: settings.set_language())
+        for i in [sf1, sf2, sf3, sf5, sf6,
+            sf4]: i.pack(padx=10, pady=7, fill='both')
         Setting_Frame.update_ui()
-        ttk.Button(self.tab3, text=lang.t38, command=Updater).pack(padx=10, pady=10, fill=X)
-        ttk.Button(self.tab3, text=lang.text16, command=self.support).pack(padx=10, pady=10, fill=X, side=BOTTOM)
+        ttk.Button(self.tab3, text=lang.t38, command=Updater).pack(
+            padx=10, pady=10, fill=X)
+        ttk.Button(self.tab3, text=lang.text16, command=self.support).pack(
+            padx=10, pady=10, fill=X, side=BOTTOM)
 
 
 # win = Tool()
@@ -850,12 +971,89 @@ animation = LoadAnim()
 start = dti()
 
 tool_self = os.path.normpath(os.path.abspath(sys.argv[0]))
-temp = os.path.join(cwd_path, "bin", "temp").replace(os.sep, '/')
+temp = os.path.join(
+    cwd_path, "bin", "temp").replace(os.sep, '/')
 tool_log = f'{temp}/{time.strftime("%Y%m%d_%H-%M-%S", time.localtime())}_{v_code()}.log'
 states = States()
-module_exec = os.path.join(cwd_path, 'bin', "exec.sh").replace(os.sep, '/')
+module_exec = os.path.join(
+    cwd_path, 'bin', "exec.sh").replace(os.sep, '/')
 # Some Functions for Upgrade
 
+
+class TransparencySettings(Toplevel):
+    def __init__(self, master):
+        super().__init__(master=master)
+        self.title(lang.t61)  # Заголовок окна
+        self.master_window = master
+
+        if os.name == 'nt' and settings.treff == '1':
+            pywinstyles.apply_style(self, 'acrylic')
+
+        self.transparency_var = BooleanVar(
+            value=settings.treff == '1')
+        self.effect_var = StringVar(value=settings.mica if hasattr(
+            settings, 'mica') and settings.mica == '1' else "acrylic")
+        self.alpha_var = DoubleVar(value=float(
+            settings.bar_level) if hasattr(settings, 'bar_level') else 1.0)
+
+        self.build_gui()
+        move_center(self)
+
+    def build_gui(self):
+        ttk.Label(self, text=lang.t61, font=(
+            None, 20)).pack(padx=10, pady=10)
+        ttk.Separator(self, orient=HORIZONTAL).pack(
+            padx=10, pady=10, fill=X)
+
+        # Frame для radiobutton-ов эффекта
+        effect_frame = Frame(self)
+        effect_frame.pack(fill=X, padx=10, pady=10)
+
+        ttk.Radiobutton(effect_frame, text="Acrylic", variable=self.effect_var,
+                        value="acrylic").pack(side='left', padx=5, pady=5)
+        ttk.Radiobutton(effect_frame, text="Mica", variable=self.effect_var,
+                        value="mica").pack(side='left', padx=5, pady=5)
+        if os.name != 'nt':
+            effect_frame.pack_forget()
+
+        # Frame для переключателя прозрачности
+        transparency_frame = Frame(self)
+        transparency_frame.pack(fill=X, padx=10, pady=10)
+
+        ttk.Checkbutton(transparency_frame, text="Enable Transparency", variable=self.transparency_var,
+                        onvalue=True, offvalue=False, style="Switch.TCheckbutton",
+                        command=self.update_transparency).pack(padx=5, pady=5, side=LEFT)
+
+        # Frame для слайдера
+        slider_frame = Frame(self)
+        slider_frame.pack(fill=X, padx=10, pady=10)
+        ttk.Label(slider_frame, text="Transparency Level:").pack(
+            side=LEFT, padx=5)
+        ttk.Scale(slider_frame, from_=0, to=1, orient=HORIZONTAL, variable=self.alpha_var,
+                  command=self.update_alpha, resolution=0.01).pack(side=LEFT, padx=5, fill=X, expand=True)
+
+        ttk.Button(self, text=lang.ok, command=self.close_settings,
+                   style='Accent.TButton').pack(padx=10, pady=10, fill=X)
+
+    def update_transparency(self):
+        if os.name == 'nt':
+            settings.set_value('treff', str(
+                int(self.transparency_var.get())))
+            settings.set_value('mica', str(
+                int(self.effect_var.get() == 'mica')))
+            self.master_window.load()
+        else:
+            settings.set_value(
+                'bar_level', str(self.alpha_var.get()))
+
+    def update_alpha(self, value):
+        if os.name != 'nt':
+            settings.set_value('bar_level', str(value))
+            self.master_window.load()
+
+    def close_settings(self):
+        self.update_transparency()
+        self.destroy()
 
 
 class Updater(Toplevel):
@@ -876,8 +1074,10 @@ class Updater(Toplevel):
         self.update_zip = ''
         self.update_assets = []
         f = ttk.Frame(self)
-        ttk.Label(f, text='MIO-KITCHEN', font=(None, 20)).pack(side=LEFT, padx=5, pady=2)
-        ttk.Label(f, text=settings.version, foreground='gray').pack(side=LEFT, padx=2, pady=2)
+        ttk.Label(f, text='MIO-KITCHEN', font=(None, 20)
+                  ).pack(side=LEFT, padx=5, pady=2)
+        ttk.Label(f, text=settings.version, foreground='gray').pack(
+            side=LEFT, padx=2, pady=2)
         f.pack(padx=5, pady=5, side=TOP)
         f2 = ttk.LabelFrame(self, text=lang.t39)
         self.notice = ttk.Label(f2, text=lang.t42)
@@ -915,13 +1115,16 @@ class Updater(Toplevel):
 
     def get_update(self):
         if self.update_button.cget('text') == lang.t40:
-            self.update_button.configure(state='disabled', text=lang.t43)
+            self.update_button.configure(
+                state='disabled', text=lang.t43)
             try:
                 self.download()
                 self.update_process()
             except (Exception, BaseException):
-                self.notice.configure(text=lang.t44, foreground='red')
-                self.update_button.configure(state='normal', text=lang.text37)
+                self.notice.configure(
+                    text=lang.t44, foreground='red')
+                self.update_button.configure(
+                    state='normal', text=lang.text37)
                 self.progressbar.stop()
                 logging.exception("Upgrade")
                 return
@@ -932,8 +1135,10 @@ class Updater(Toplevel):
             url = requests.get(self.update_url)
         except (Exception, BaseException) as e:
             if states.update_window:
-                self.notice.configure(text=lang.t46, foreground='red')
-                self.update_button.configure(state='normal', text=lang.text37)
+                self.notice.configure(
+                    text=lang.t46, foreground='red')
+                self.update_button.configure(
+                    state='normal', text=lang.text37)
                 self.change_log.insert('insert', e)
             return
         if not states.update_window:
@@ -941,26 +1146,34 @@ class Updater(Toplevel):
         try:
             json_ = json.loads(url.text)
         except (Exception, BaseException):
-            self.notice.configure(text=lang.t47, foreground='red')
+            self.notice.configure(
+                text=lang.t47, foreground='red')
             return
         new_version = json_.get('name')
 
         if new_version is None:
-            self.notice.configure(text=lang.t46, foreground='red')
-            self.update_button.configure(state='normal', text=lang.text37)
+            self.notice.configure(
+                text=lang.t46, foreground='red')
+            self.update_button.configure(
+                state='normal', text=lang.text37)
             self.change_log.insert('insert', url.text)
             return
 
         if not new_version.endswith(settings.version):
             self.package_head = new_version
-            self.notice.configure(text=lang.t48 % new_version, foreground='orange')
-            self.change_log.insert('insert', json_.get('body'))
+            self.notice.configure(
+                text=lang.t48 % new_version, foreground='orange')
+            self.change_log.insert(
+                'insert', json_.get('body'))
             self.update_assets = json_.get('assets')
             self.get_download_url()
-            self.update_button.configure(text=lang.text37 if not self.update_download_url else lang.t40)
+            self.update_button.configure(
+                text=lang.text37 if not self.update_download_url else lang.t40)
         else:
-            self.notice.configure(text=lang.t49, foreground='green')
-            self.change_log.insert('insert', json_.get('body'))
+            self.notice.configure(
+                text=lang.t49, foreground='green')
+            self.change_log.insert(
+                'insert', json_.get('body'))
 
     def get_download_url(self):
         package = f'{self.package_head}'
@@ -973,12 +1186,14 @@ class Updater(Toplevel):
         for i in self.update_assets:
             if i.get('name') == package:
                 if platform.machine() in ['AMD64', 'X86_64', 'x86_64']:
-                    self.update_download_url = i.get('browser_download_url')
+                    self.update_download_url = i.get(
+                        'browser_download_url')
                     self.update_size = i.get('size')
                     return
                 else:
                     break
-        self.notice.configure(text=lang.t50, foreground='red')
+        self.notice.configure(
+            text=lang.t50, foreground='red')
 
     def download(self):
         if not os.path.exists(temp):
@@ -994,7 +1209,8 @@ class Updater(Toplevel):
                 return
             if percentage != 'None':
                 if mode:
-                    self.progressbar.configure(mode='determinate')
+                    self.progressbar.configure(
+                        mode='determinate')
                     mode = False
                     self.progressbar.stop()
                 self.progressbar['value'] = percentage
@@ -1013,9 +1229,11 @@ class Updater(Toplevel):
                         zip_ref.extract(file, cwd_path)
                     except PermissionError:
                         zip_ref.extract(file, temp)
-                        update_files.append([os.path.join(temp, file), file])
+                        update_files.append(
+                            [os.path.join(temp, file), file])
                 else:
-                    zip_ref.extract(file, os.path.join(cwd_path, "bin"))
+                    zip_ref.extract(
+                        file, os.path.join(cwd_path, "bin"))
         update_dict = {
             'updating': '1',
             'language': settings.language,
@@ -1029,10 +1247,10 @@ class Updater(Toplevel):
         shutil.copy(os.path.join(cwd_path, "bin", "tool" + ('' if os.name != 'nt' else '.exe')),
                     os.path.normpath(os.path.join(cwd_path, "upgrade" + ('' if os.name != 'nt' else '.exe'))))
         subprocess.Popen(
-            [os.path.normpath(os.path.join(cwd_path, "upgrade" + ('' if os.name != 'nt' else '.exe')))],
+            [os.path.normpath(os.path.join(
+                cwd_path, "upgrade" + ('' if os.name != 'nt' else '.exe')))],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         terminate_process(os.getpid())
-
 
     def update_process2(self):
         self.notice.configure(text=lang.t51)
@@ -1046,7 +1264,8 @@ class Updater(Toplevel):
                 if calculate_md5_file(path) == calculate_md5_file(os.path.join(cwd_path, real)):
                     continue
                 if os.path.exists(path):
-                    os.rename(path, os.path.join(cwd_path, real))
+                    os.rename(
+                        path, os.path.join(cwd_path, real))
                 else:
                     logging.warning(path)
 
@@ -1058,9 +1277,12 @@ class Updater(Toplevel):
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             terminate_process(os.getpid())
         else:
-            self.notice.configure(text=lang.t41, foreground='red')
-            self.update_button.configure(state='normal', text=lang.text37)
-            settings.set_value('version', settings.version_old)
+            self.notice.configure(
+                text=lang.t41, foreground='red')
+            self.update_button.configure(
+                state='normal', text=lang.text37)
+            settings.set_value(
+                'version', settings.version_old)
 
     def update_process3(self):
         self.notice.configure(text=lang.t52)
@@ -1070,7 +1292,8 @@ class Updater(Toplevel):
                 if os.path.isfile(settings.new_tool):
                     os.remove(settings.new_tool)
                 if os.path.isfile(os.path.join(cwd_path, "upgrade" + ('' if os.name != 'nt' else '.exe'))):
-                    os.remove(os.path.normpath(os.path.join(cwd_path, "upgrade" + ('' if os.name != 'nt' else '.exe'))))
+                    os.remove(os.path.normpath(os.path.join(
+                        cwd_path, "upgrade" + ('' if os.name != 'nt' else '.exe'))))
                 if os.path.exists(temp):
                     shutil.rmtree(temp)
                 os.makedirs(temp, exist_ok=True)
@@ -1082,9 +1305,12 @@ class Updater(Toplevel):
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             terminate_process(os.getpid())
         else:
-            self.notice.configure(text=lang.t41, foreground='red')
-            self.update_button.configure(state='normal', text=lang.text37)
-            settings.set_value('version', settings.version_old)
+            self.notice.configure(
+                text=lang.t41, foreground='red')
+            self.update_button.configure(
+                state='normal', text=lang.text37)
+            settings.set_value(
+                'version', settings.version_old)
 
     def close(self):
         states.update_window = False
@@ -1096,14 +1322,16 @@ def error(code, desc="unknown error"):
         win.withdraw()
     sv_ttk.use_dark_theme()
     er: Toplevel = Toplevel()
-    img = open_img(BytesIO(images.error_logo_byte)).resize((100, 100))
+    img = open_img(
+        BytesIO(images.error_logo_byte)).resize((100, 100))
     pyt = PhotoImage(img)
     Label(er, image=pyt).pack(padx=10, pady=10)
     er.protocol("WM_DELETE_WINDOW", win.destroy)
     er.title(f"Program crash! [{settings.version}]")
     er.lift()
     er.resizable(False, False)
-    ttk.Label(er, text=f"Error:0x{code}", font=(None, 20), foreground='red').pack(padx=10, pady=10)
+    ttk.Label(er, text=f"Error:0x{code}", font=(
+        None, 20), foreground='red').pack(padx=10, pady=10)
     ttk.Label(er, text="Dont Worry! Its not your problem.\nYou just need to Report the bug to us.",
               font=(None, 10)).pack(
         padx=10, pady=10)
@@ -1115,14 +1343,17 @@ def error(code, desc="unknown error"):
     te.pack(padx=10, pady=10, fill=BOTH)
     te.insert('insert', desc)
     te.config(yscrollcommand=scroll.set)
-    ttk.Label(er, text=f"The Log File Is: {tool_log}", font=(None, 10)).pack(padx=10, pady=10)
+    ttk.Label(er, text=f"The Log File Is: {tool_log}", font=(
+        None, 10)).pack(padx=10, pady=10)
     ttk.Button(er, text="Report",
-               command=lambda: openurl("https://github.com/ColdWindScholar/MIO-KITCHEN-SOURCE/issues"),
+               command=lambda: openurl(
+                   "https://github.com/ColdWindScholar/MIO-KITCHEN-SOURCE/issues"),
                style="Accent.TButton").pack(side=LEFT,
                                             padx=10,
                                             pady=10, expand=True, fill=BOTH)
     ttk.Button(er, text="Generate Bug Report",
-               command=lambda: create_thread(Generate_Bug_Report),
+               command=lambda: create_thread(
+                   Generate_Bug_Report),
                style="Accent.TButton").pack(side=LEFT,
                                             padx=10,
                                             pady=10, expand=True, fill=BOTH)
@@ -1131,7 +1362,8 @@ def error(code, desc="unknown error"):
                style="Accent.TButton").pack(side=LEFT,
                                             padx=10,
                                             pady=10, expand=True, fill=BOTH)
-    ttk.Button(er, text="Exit", command=win.destroy).pack(side=LEFT, padx=10, pady=10, expand=True, fill=BOTH)
+    ttk.Button(er, text="Exit", command=win.destroy).pack(
+        side=LEFT, padx=10, pady=10, expand=True, fill=BOTH)
     move_center(er)
     er.wait_window()
     sys.exit()
@@ -1154,10 +1386,14 @@ class Welcome(ttk.Frame):
         if frames.get(oobe):
             frames.get(oobe, self.main)()
         else:
-            ttk.Label(self, text=lang.text135, font=(None, 40)).pack(padx=10, pady=10, fill=X)
-            ttk.Separator(self, orient=HORIZONTAL).pack(padx=10, pady=10, fill=X)
-            ttk.Label(self, text=lang.text137, font=(None, 20)).pack(padx=10, pady=10, fill=BOTH, expand=True)
-            ttk.Button(self, text=lang.text136, command=self.main).pack(fill=X)
+            ttk.Label(self, text=lang.text135, font=(
+                None, 40)).pack(padx=10, pady=10, fill=X)
+            ttk.Separator(self, orient=HORIZONTAL).pack(
+                padx=10, pady=10, fill=X)
+            ttk.Label(self, text=lang.text137, font=(None, 20)).pack(
+                padx=10, pady=10, fill=BOTH, expand=True)
+            ttk.Button(self, text=lang.text136,
+                       command=self.main).pack(fill=X)
         move_center(win)
         self.wait_window()
         states.in_oobe = False
@@ -1174,14 +1410,18 @@ class Welcome(ttk.Frame):
         for i in self.winfo_children():
             i.destroy()
         self.reframe()
-        ttk.Label(self.frame, text=lang.text129, font=(None, 20)).pack(padx=10, pady=10, fill=X)
-        ttk.Separator(self.frame, orient=HORIZONTAL).pack(padx=10, pady=10, fill=X)
+        ttk.Label(self.frame, text=lang.text129, font=(
+            None, 20)).pack(padx=10, pady=10, fill=X)
+        ttk.Separator(self.frame, orient=HORIZONTAL).pack(
+            padx=10, pady=10, fill=X)
         lb3_ = ttk.Combobox(self.frame, state='readonly', textvariable=language,
                             values=[i.rsplit('.', 1)[0] for i in
                                     os.listdir(f"{cwd_path}/bin/languages")])
         lb3_.pack(padx=10, pady=10, side='top', fill=BOTH)
-        lb3_.bind('<<ComboboxSelected>>', lambda *x: settings.set_language())
-        ttk.Button(self.frame, text=lang.text138, command=self.license).pack(fill=X, side='bottom')
+        lb3_.bind('<<ComboboxSelected>>',
+                  lambda *x: settings.set_language())
+        ttk.Button(self.frame, text=lang.text138,
+                   command=self.license).pack(fill=X, side='bottom')
 
     def license(self):
         settings.set_value("oobe", 2)
@@ -1197,195 +1437,225 @@ class Welcome(ttk.Frame):
         lb = ttk.Combobox(self.frame, state='readonly', textvariable=lce,
                           values=[i.rsplit('.')[0] for i in os.listdir(f"{cwd_path}/bin/licenses") if
                                   i != 'private.txt'])
-        lb.bind('<<ComboboxSelected>>', lambda *x: load_license())
+        lb.bind('<<ComboboxSelected>>',
+                lambda *x: load_license())
         lb.current(0)
-        ttk.Label(self.frame, text=lang.text139, font=(None, 25)).pack(side='top', padx=10, pady=10, fill=X)
-        ttk.Separator(self.frame, orient=HORIZONTAL).pack(padx=10, pady=10, fill=X)
+        ttk.Label(self.frame, text=lang.text139, font=(
+            None, 25)).pack(side='top', padx=10, pady=10, fill=X)
+        ttk.Separator(self.frame, orient=HORIZONTAL).pack(
+            padx=10, pady=10, fill=X)
         lb.pack(padx=10, pady=10, side='top', fill=X)
         te = Text(self.frame, height=10)
         te.pack(fill=BOTH, side='top', expand=True)
         load_license()
         ttk.Label(self.frame, text=lang.t1).pack()
-        ttk.Button(self.frame, text=lang.text138, command=self.private).pack(fill=BOTH, side='bottom')
+        ttk.Button(self.frame, text=lang.text138, command=self.private).pack(
+            fill=BOTH, side='bottom')
 
     def private(self):
         settings.set_value("oobe", 3)
         self.reframe()
-        ttk.Label(self.frame, text=lang.t2, font=(None, 25)).pack(side='top', padx=10, pady=10, fill=X)
-        ttk.Separator(self.frame, orient=HORIZONTAL).pack(padx=10, pady=10, fill=X)
+        ttk.Label(self.frame, text=lang.t2, font=(None, 25)).pack(
+            side='top', padx=10, pady=10, fill=X)
+        ttk.Separator(self.frame, orient=HORIZONTAL).pack(
+            padx=10, pady=10, fill=X)
         with open(os.path.join(cwd_path, "bin", "licenses", "private.txt"), 'r',
                   encoding='UTF-8') as f:
-            (te := Text(self.frame, height=10)).insert('insert', f.read())
+            (te := Text(self.frame, height=10)).insert(
+                'insert', f.read())
         te.pack(fill=BOTH, expand=True)
         ttk.Label(self.frame, text=lang.t3).pack()
-        ttk.Button(self.frame, text=lang.text138, command=self.support).pack(fill=BOTH, side='bottom')
+        ttk.Button(self.frame, text=lang.text138, command=self.support).pack(
+            fill=BOTH, side='bottom')
 
     def support(self):
         settings.set_value("oobe", 4)
         self.reframe()
         ttk.Label(self.frame, text=lang.text16, font=(None, 25)).pack(side='top', padx=10, pady=10, fill=X
                                                                       )
-        ttk.Separator(self.frame, orient=HORIZONTAL).pack(padx=10, pady=10, fill=X)
+        ttk.Separator(self.frame, orient=HORIZONTAL).pack(
+            padx=10, pady=10, fill=X)
         self.photo = PhotoImage(data=images.wechat_byte)
-        Label(self.frame, image=self.photo).pack(padx=5, pady=5)
+        Label(self.frame, image=self.photo).pack(
+            padx=5, pady=5)
         ttk.Label(self.frame, text=lang.text109).pack()
-        ttk.Button(self.frame, text=lang.text138, command=self.done).pack(fill=BOTH, side='bottom')
+        ttk.Button(self.frame, text=lang.text138, command=self.done).pack(
+            fill=BOTH, side='bottom')
 
     def done(self):
         settings.set_value("oobe", 5)
         self.reframe()
-        ttk.Label(self.frame, text=lang.t4, font=(None, 25)).pack(side='top', padx=10, pady=10, fill=X)
-        ttk.Separator(self.frame, orient=HORIZONTAL).pack(padx=10, pady=10, fill=X)
+        ttk.Label(self.frame, text=lang.t4, font=(None, 25)).pack(
+            side='top', padx=10, pady=10, fill=X)
+        ttk.Separator(self.frame, orient=HORIZONTAL).pack(
+            padx=10, pady=10, fill=X)
         ttk.Label(self.frame, text=lang.t5, font=(None, 20)).pack(
             side='top', fill=BOTH, padx=10, pady=10, expand=True)
-        ttk.Button(self, text=lang.text34, command=self.destroy).pack(fill=BOTH, side='bottom')
+        ttk.Button(self, text=lang.text34, command=self.destroy).pack(
+            fill=BOTH, side='bottom')
 
 
 class SetUtils:
     def __init__(self, set_ini: str = None, load=True):
-        self.project_struct = 'single'
-        self.auto_unpack = '0'
-        self.treff = '0'
-        if set_ini:
-            self.set_file = set_ini
-        else:
-            self.set_file = os.path.join(cwd_path, "bin", "setting.ini")
-        self.plugin_repo = None
-        self.contextpatch = '0'
-        self.oobe = '0'
-        self.path = None
-        self.bar_level = '0.9'
-        self.ai_engine = '0'
-        self.version = 'basic'
-        self.version_old = 'unknown'
-        self.language = 'English'
-        self.updating = ''
-        self.new_tool = ''
-        self.debug_mode = 'No'
-        self.theme = 'dark'
-        self.update_url = 'https://api.github.com/repos/ColdWindScholar/MIO-KITCHEN-SOURCE/releases/latest'
-        self.config = ConfigParser()
-        if os.access(self.set_file, os.F_OK):
-            if load:
-                self.load()
-        else:
-            sv_ttk.set_theme("dark")
-            error(1,
-                  'Some necessary files were lost, please reinstall this software to fix the problem!')
-        if hasattr(self, 'custom_system'):
-            if not self.custom_system.strip():
-                self.custom_system = platform.system()
-        else:
+    self.project_struct = 'single'
+    self.auto_unpack = '0'
+    self.treff = '0'
+    if set_ini:
+        self.set_file = set_ini
+    else:
+        self.set_file = os.path.join(
+            cwd_path, "bin", "setting.ini")
+    self.plugin_repo = None
+    self.contextpatch = '0'
+    self.oobe = '0'
+    self.path = None
+    self.bar_level = '0.9'
+    self.ai_engine = '0'
+    self.version = 'basic'
+    self.version_old = 'unknown'
+    self.language = 'English'
+    self.updating = ''
+    self.new_tool = ''
+    self.debug_mode = 'No'
+    self.theme = 'dark'
+    self.mica = '0'
+    self.update_url = 'https://api.github.com/repos/ColdWindScholar/MIO-KITCHEN-SOURCE/releases/latest'
+    self.config = ConfigParser()
+    if os.access(self.set_file, os.F_OK):
+        if load:
+            self.load()
+    else:
+        sv_ttk.set_theme("dark")
+        error(1,
+              'Some necessary files were lost, please reinstall this software to fix the problem!')
+    if hasattr(self, 'custom_system'):
+        if not self.custom_system.strip():
             self.custom_system = platform.system()
-        self.tool_bin = os.path.join(cwd_path, 'bin', self.custom_system, platform.machine()) + os.sep
+    else:
+        self.custom_system = platform.system()
+    self.tool_bin = os.path.join(
+        cwd_path, 'bin', self.custom_system, platform.machine()) + os.sep
 
     def load(self):
-        self.config.read(self.set_file)
-        for i in self.config.items('setting'):
-            setattr(self, i[0], i[1])
-        if os.path.exists(self.path):
-            if not self.path:
-                self.path = os.getcwd()
-        else:
-            self.path = utils.prog_path
-        language.set(self.language)
-        self.load_language(language.get())
-        theme.set(self.theme)
-        sv_ttk.set_theme(self.theme)
-        if is_pro:
-            if 'active_code' not in self.__dir__():
-                self.active_code = 'None'
-            verify.verify(self.active_code)
-        if os.name != 'nt':
-            win.attributes("-alpha", self.bar_level)
-        else:
-            if self.treff == '1':
-                pywinstyles.apply_style(win, 'acrylic')
-            else:
-                pywinstyles.apply_style(win, 'normal')
-                pywinstyles.apply_style(win, 'mica')
+    self.config.read(self.set_file)
 
-    @staticmethod
-    def load_language(name):
-        lang_file = f'{cwd_path}/bin/languages/{name}.json'
-        _lang: dict = {}
-        if not name and not os.path.exists(f'{cwd_path}/bin/languages/English.json'):
-            error(1)
-        elif not os.path.exists(lang_file):
-            _lang = JsonEdit(f'{cwd_path}/bin/languages/English.json').read()
-        else:
-            _lang = JsonEdit(lang_file).read()
-        lang.second = JsonEdit(f'{cwd_path}/bin/languages/English.json').read()
-        [setattr(lang, i, _lang[i]) for i in _lang]
+    for i in self.config.items('setting'):
+        setattr(self, i[0], i[1])
 
-    def set_value(self, name, value):
-        self.config.read(self.set_file)
-        self.config.set("setting", name, value)
-        with open(self.set_file, 'w', encoding='utf-8') as fil:
-            self.config.write(fil)
-        setattr(self, name, value)
-        if name in ['treff', 'barlevel', 'theme']:
-            self.load()
+    if os.path.exists(self.path):
+        if not self.path:
+            self.path = os.getcwd()
+    else:
+        self.path = utils.prog_path
 
-    def set_theme(self):
-        print(lang.text100 + theme.get())
-        try:
-            self.set_value("theme", theme.get())
-            sv_ttk.set_theme(theme.get())
-            animation.load_gif(open_img(BytesIO(getattr(images, f"loading_{win.list2.get()}_byte"))))
-        except Exception as e:
-            logging.exception('Bugs')
-            win.message_pop(lang.text101 % (theme.get(), e))
+    language.set(self.language)
+    self.load_language(language.get())
+    theme.set(self.theme)
+    sv_ttk.set_theme(self.theme)
 
-    def set_language(self):
-        print(lang.text129 + language.get())
-        try:
-            self.set_value("language", language.get())
-            self.load_language(language.get())
-            if not states.in_oobe:
-                if ask_win(lang.t36):
-                    restart()
-        except Exception as e:
-            logging.exception('Bugs')
-            print(lang.t130, e)
+    if is_pro:
+        if 'active_code' not in self.__dir__():
+            self.active_code = 'None'
+        verify.verify(self.active_code)
 
-    def modpath(self):
-        if not (folder := filedialog.askdirectory()):
-            return
-        self.set_value("path", folder)
-        win.show_local.set(folder)
+    if os.name != 'nt':
+        win.attributes("-alpha", self.bar_level)
+    else:
+        if self.treff == '1':
+            pywinstyles.apply_style(
+                win, 'acrylic' if self.mica != '1' else 'mica')
+       else:
+    pywinstyles.apply_style(win, 'normal')
+    pywinstyles.apply_style(win, 'mica')
+
+@staticmethod
+def load_language(name):
+    lang_file = f'{cwd_path}/bin/languages/{name}.json'
+    _lang: dict = {}
+    
+    if not name and not os.path.exists(f'{cwd_path}/bin/languages/English.json'):
+        error(1)
+    elif not os.path.exists(lang_file):
+        _lang = JsonEdit(f'{cwd_path}/bin/languages/English.json').read()
+    else:
+        _lang = JsonEdit(lang_file).read()
+    
+    lang.second = JsonEdit(f'{cwd_path}/bin/languages/English.json').read()
+    [setattr(lang, i, _lang[i]) for i in _lang]
+
+def set_value(self, name, value):
+    self.config.read(self.set_file)
+    self.config.set("setting", name, value)
+    
+    with open(self.set_file, 'w', encoding='utf-8') as fil:
+        self.config.write(fil)
+    
+    setattr(self, name, value)
+    if name in ['treff', 'barlevel', 'theme']:
         self.load()
 
+def set_theme(self):
+    print(lang.text100 + theme.get())
+    try:
+        self.set_value("theme", theme.get())
+        sv_ttk.set_theme(theme.get())
+        animation.load_gif(open_img(BytesIO(getattr(images, f"loading_{win.list2.get()}_byte"))))
+    except Exception as e:
+        logging.exception('Bugs')
+        win.message_pop(lang.text101 % (theme.get(), e))
+
+def set_language(self):
+    print(lang.text129 + language.get())
+    try:
+        self.set_value("language", language.get())
+        self.load_language(language.get())
+        if not states.in_oobe:
+            if ask_win(lang.t36):
+                restart()
+    except Exception as e:
+        logging.exception('Bugs')
+        print(lang.t130, e)
+
+def modpath(self):
+    if not (folder := filedialog.askdirectory()):
+        return
+    self.set_value("path", folder)
+    win.show_local.set(folder)
+    self.load()
 
 settings = SetUtils(load=False)
 
-
 def re_folder(path, quiet=False):
-    if os.path.exists(path): rmdir(path, quiet)
+    if os.path.exists(path):
+        rmdir(path, quiet)
     os.makedirs(path, exist_ok=True)
-
 
 @animation
 def un_dtbo(bn: str = 'dtbo') -> None:
     if not (dtboimg := findfile(f"{bn}.img", work := ProjectManager.current_work_path())):
         print(lang.warn3.format(bn))
         return
+    
     re_folder(work + bn)
     re_folder(f"{work}{bn}/dtbo")
     re_folder(work + bn + "/dts")
+    
     try:
         mkdtboimg.dump_dtbo(dtboimg, work + bn + "/dtbo/dtbo")
     except Exception as e:
         logging.exception("Bugs")
         print(lang.warn4.format(e))
         return
+    
     for dtbo in os.listdir(work + bn + os.sep + "dtbo"):
         if dtbo.startswith("dtbo."):
             print(lang.text4.format(dtbo))
             call(
                 exe=['dtc', '-@', '-I', 'dtb', '-O', 'dts', f'{work}{bn}/dtbo/{dtbo}', '-o',
                      os.path.join(work, bn, 'dts', 'dts.' + os.path.basename(dtbo).rsplit('.', 1)[1])],
-                out=1)
+                out=1
+            )
+    
     print(lang.text5)
     try:
         os.remove(dtboimg)
@@ -1393,30 +1663,32 @@ def un_dtbo(bn: str = 'dtbo') -> None:
         logging.exception('Bugs')
     rmdir(work + "dtbo/dtbo")
 
-
 @animation
 def pack_dtbo() -> bool:
     work = ProjectManager.current_work_path()
     if not os.path.exists(work + "dtbo/dts") or not os.path.exists(work + "dtbo"):
         print(lang.warn5)
         return False
-    re_folder(work + "dtbo/dtbo")
+    
+    re_folder(work + "dtbo/dto")
     for dts in os.listdir(work + "dtbo/dts"):
         if dts.startswith("dts."):
             print(f"{lang.text6}:{dts}")
             call(
                 exe=['dtc', '-@', '-I', 'dts', '-O', 'dtb', os.path.join(work, 'dtbo', 'dts', dts), '-o',
                      os.path.join(work, 'dtbo', 'dtbo', 'dtbo.' + os.path.basename(dts).rsplit('.', 1)[1])],
-                out=1)
+                out=1
+            )
+    
     print(f"{lang.text7}:dtbo.img")
-    list_ = [os.path.join(work, "dtbo", "dtbo", f) for f in os.listdir(work + "dtbo/dtbo") if
+    list_ = [os.path.join(work, "dtbo", "dtbo", f) for f in os.listdir(work + "dtbo/dto") if
              f.startswith("dtbo.")]
+    
     mkdtboimg.create_dtbo(ProjectManager.current_work_output_path() + "dtbo.img",
                           sorted(list_, key=lambda x: int(x.rsplit('.')[1])), 4096)
     rmdir(work + "dtbo")
     print(lang.text8)
     return True
-
 
 @animation
 def logo_dump(file_path, output: str = None, output_name: str = "logo"):
@@ -1425,6 +1697,7 @@ def logo_dump(file_path, output: str = None, output_name: str = "logo"):
     if not os.path.exists(file_path):
         win.message_pop(lang.warn3.format(output_name))
         return False
+    
     re_folder(output + output_name)
     LogoDumper(file_path, output + output_name).unpack()
 
@@ -1433,15 +1706,16 @@ def logo_pack(origin_logo=None) -> int:
     work = ProjectManager.current_work_path()
     if not origin_logo:
         origin_logo = findfile('logo.img', work)
+    
     logo = work + "logo-new.img"
     if not os.path.exists(dir_ := work + "logo") or not os.path.exists(origin_logo):
         print(lang.warn6)
         return 1
+    
     utils.LogoDumper(origin_logo, logo, dir_).repack()
     os.remove(origin_logo)
     os.rename(logo, origin_logo)
     rmdir(dir_)
-
 
 class IconGrid(tk.Frame):
     def __init__(self, master=None, **kwargs):
