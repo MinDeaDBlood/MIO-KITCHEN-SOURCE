@@ -23,7 +23,9 @@ import threading
 from functools import wraps
 from random import randrange
 from tkinter.ttk import Scrollbar
-
+from src.core.avb_disabler import process_fstab
+from src.core.encryption_disabler import process_fstab_for_encryption
+from src.core import merge_sparse
 from src.core import tarsafe, miside_banner
 from src.core.Magisk import Magisk_patch
 from src.core.addon_register import loader, Entry
@@ -96,6 +98,48 @@ from .controls import ListBox, ScrollFrame
 from src.core.undz import DZFileTools
 from src.core.selinux_audit_allow import main as selinux_audit_allow
 import logging
+import os
+import time
+from src.core import utils 
+
+# =========================================================================
+# 2. Logging Initialization Block
+# =========================================================================
+
+# Define base paths and variables
+cwd_path = utils.prog_path
+temp = os.path.join(cwd_path, "bin", "temp").replace(os.sep, '/')
+
+# Create the log directory if it doesn't exist
+if not os.path.exists(temp):
+    os.makedirs(temp, exist_ok=True) 
+
+# Generate a unique log file name with a timestamp
+tool_log = f'{temp}/{time.strftime("%Y%m%d_%H-%M-%S", time.localtime())}_{v_code()}.log'
+
+# Configure logging. This must be done BEFORE the first call to any logging function.
+# force=True (for Python 3.8+) ensures that this configuration is applied,
+# even if a basic configuration has already been set up somewhere else.
+try:
+    logging.basicConfig(
+        level=logging.DEBUG, 
+        format='%(levelname)s:%(asctime)s:%(filename)s:%(name)s:%(message)s',
+        filename=tool_log, 
+        filemode='w',
+        force=True  # Re-configures the logging module
+    )
+except TypeError:
+    # Fallback for Python < 3.8, where the 'force' argument is not available.
+    # Note: This might not work as expected if logging was already configured elsewhere.
+    logging.basicConfig(
+        level=logging.DEBUG, 
+        format='%(levelname)s:%(asctime)s:%(filename)s:%(name)s:%(message)s',
+        filename=tool_log, 
+        filemode='w'
+    )
+
+# Log the initial configuration message
+logging.info("Logging configured successfully. Log level: DEBUG. Log file: %s", tool_log)
 
 is_pro = False
 try:
@@ -115,8 +159,6 @@ try:
     from src.core.pycase import ensure_dir_case_sensitive
 except ImportError:
     ensure_dir_case_sensitive = lambda *x: print(f'Cannot sensitive {x}, Not Supported')
-
-cwd_path = utils.prog_path
 
 if os.name == 'nt':
     def set_title_bar_color(window, dark_value: int = 20):
@@ -469,9 +511,12 @@ class ToolBox(ttk.Frame):
             (lang.t59, self.GetFileInfo), # Get File Info
             (lang.t60, self.FileBytes), # File Bytes Operations
             (lang.audit_allow, self.SelinuxAuditAllow), # Selinux Audit Allow
+            (lang.disable_avb, self.DisableAVB), 
+            (lang.disable_encryption, self.DisableEncryption),
             (lang.trim_image, self.TrimImage), # Trim Image
             (lang.magisk_patch, self.MagiskPatcher), # Magisk Patcher
-            (lang.mergequalcommimage, self.MergeQualcommImage_old) # Merge Qualcomm Image (Legacy)
+            (lang.mergequalcommimage, self.MergeQualcommImage_old), # Merge Qualcomm Image (Legacy)
+            (lang.merge_file_segments, self.MergeSparseImage)
         ]
         width_controls = 3  # Number of buttons per row.
         index_row = 0
@@ -1023,6 +1068,310 @@ class ToolBox(ttk.Frame):
             self.choose_button.configure(state='disabled')
             self.do_trim()
             self.button.configure(text=lang.done, state='normal', style='')
+
+            
+    class DisableAVB(Toplevel):
+        def __init__(self):
+            super().__init__()
+            self.title(lang.disable_avb)
+            self.minsize(450, 350)
+            self.partitions_with_fstab = {}
+            self.gui()
+            move_center(self)
+            create_thread(self.scan_partitions)
+
+        def gui(self):
+            info_frame = ttk.Frame(self)
+            info_frame.pack(padx=10, pady=(10, 5), fill=X)
+            ttk.Label(info_frame, text=lang.disable_avb_info, wraplength=400).pack(fill=X)
+
+            main_frame = ttk.LabelFrame(self, text=lang.available_partitions)
+            main_frame.pack(padx=10, pady=5, fill=BOTH, expand=True)
+
+            self.list_box = ListBox(main_frame)
+            self.list_box.gui()
+            self.list_box.pack(padx=5, pady=5, fill=BOTH, expand=True)
+
+            button_frame = ttk.Frame(self)
+            button_frame.pack(padx=10, pady=(5, 10), fill=X, side=BOTTOM)
+
+            ttk.Button(button_frame, text=lang.refresh, command=self.scan_partitions).pack(side=LEFT, padx=(0, 5))
+
+            self.run_button = ttk.Button(button_frame, text=lang.run, style="Accent.TButton", command=self.run_disable_avb)
+            self.run_button.pack(side=RIGHT, fill=X, expand=True)
+
+        def scan_partitions(self):
+            self.list_box.clear()
+            self.partitions_with_fstab.clear()
+
+            if not project_manger.exist():
+                print(lang.project_not_selected)
+                self.run_button.config(state='disabled')
+                return
+
+            work_path = project_manger.current_work_path()
+            parts_info_path = os.path.join(work_path, 'config', 'parts_info')
+            parts_dict = {}
+            if os.path.exists(parts_info_path):
+                parts_dict = JsonEdit(parts_info_path).read()
+
+            for item_name in sorted(os.listdir(work_path)):
+                item_path = os.path.join(work_path, item_name)
+                if os.path.isdir(item_path):
+                    for root, _, files in os.walk(item_path):
+                        for file in files:
+                            if 'fstab' in file.lower():
+                                if item_name not in self.partitions_with_fstab:
+                                    self.partitions_with_fstab[item_name] = []
+                                self.partitions_with_fstab[item_name].append(os.path.join(root, file))
+
+            if not self.partitions_with_fstab:
+                print(lang.no_fstab_partitions_found)
+                self.run_button.config(state='disabled')
+            else:
+                for partition_name in self.partitions_with_fstab.keys():
+                    fs_type = parts_dict.get(partition_name, 'unknown')
+                    display_text = f"{partition_name} [{fs_type}]"
+                    self.list_box.insert(display_text, partition_name)
+                self.run_button.config(state='normal')
+
+        def run_disable_avb(self):
+            selected_partitions = self.list_box.selected
+            if not selected_partitions:
+                warn_win(lang.select_partition_to_disable_avb)
+                return
+
+            self.run_button.config(state='disabled', text=lang.running)
+            create_thread(self._process_in_thread, selected_partitions)
+
+        def _process_in_thread(self, selected_partitions):
+            processed_count = 0
+            for partition_name in selected_partitions:
+                if partition_name in self.partitions_with_fstab:
+                    print(f"--- {lang.processing_partition.format(partition=partition_name)} ---")
+                    for fstab_path in self.partitions_with_fstab[partition_name]:
+                        process_fstab(fstab_path) 
+                    processed_count += 1
+
+            def final_actions():
+                if self.winfo_exists():
+                    self.run_button.config(state='normal', text=lang.run)
+                    info_win(lang.disable_avb_completed.format(processed_count=processed_count))
+                    self.destroy()
+
+            self.after(0, final_actions)
+
+
+    class DisableEncryption(Toplevel):
+        def __init__(self):
+            super().__init__()
+            self.title(lang.disable_encryption)
+            self.minsize(450, 350)
+            self.partitions_with_fstab = {}
+            self.gui()
+            move_center(self)
+            create_thread(self.scan_partitions)
+
+        def gui(self):
+            info_frame = ttk.Frame(self)
+            info_frame.pack(padx=10, pady=(10, 5), fill=X)
+            ttk.Label(info_frame, text=lang.disable_encryption_info, wraplength=400).pack(fill=X)
+
+            main_frame = ttk.LabelFrame(self, text=lang.available_partitions)
+            main_frame.pack(padx=10, pady=5, fill=BOTH, expand=True)
+
+            self.list_box = ListBox(main_frame)
+            self.list_box.gui()
+            self.list_box.pack(padx=5, pady=5, fill=BOTH, expand=True)
+
+            button_frame = ttk.Frame(self)
+            button_frame.pack(padx=10, pady=(5, 10), fill=X, side=BOTTOM)
+
+            ttk.Button(button_frame, text=lang.refresh, command=self.scan_partitions).pack(side=LEFT, padx=(0, 5))
+
+            self.run_button = ttk.Button(button_frame, text=lang.run, style="Accent.TButton", command=self.run_disable_encryption)
+            self.run_button.pack(side=RIGHT, fill=X, expand=True)
+
+        def scan_partitions(self):
+            self.list_box.clear()
+            self.partitions_with_fstab.clear()
+
+            if not project_manger.exist():
+                print(lang.project_not_selected)
+                self.run_button.config(state='disabled')
+                return
+
+            work_path = project_manger.current_work_path()
+            parts_info_path = os.path.join(work_path, 'config', 'parts_info')
+            parts_dict = {}
+            if os.path.exists(parts_info_path):
+                parts_dict = JsonEdit(parts_info_path).read()
+
+            for item_name in sorted(os.listdir(work_path)):
+                item_path = os.path.join(work_path, item_name)
+                if os.path.isdir(item_path):
+                    for root, _, files in os.walk(item_path):
+                        for file in files:
+                            if 'fstab' in file.lower():
+                                if item_name not in self.partitions_with_fstab:
+                                    self.partitions_with_fstab[item_name] = []
+                                self.partitions_with_fstab[item_name].append(os.path.join(root, file))
+
+            if not self.partitions_with_fstab:
+                print(lang.no_fstab_partitions_found)
+                self.run_button.config(state='disabled')
+            else:
+                for partition_name in self.partitions_with_fstab.keys():
+                    fs_type = parts_dict.get(partition_name, 'unknown')
+                    display_text = f"{partition_name} [{fs_type}]"
+                    self.list_box.insert(display_text, partition_name)
+                self.run_button.config(state='normal')
+
+        def run_disable_encryption(self):
+            selected_partitions = self.list_box.selected
+            if not selected_partitions:
+                warn_win(lang.select_partition_to_disable_avb)
+                return
+
+            self.run_button.config(state='disabled', text=lang.running)
+            create_thread(self._process_in_thread, selected_partitions)
+
+        def _process_in_thread(self, selected_partitions):
+            modified_count = 0
+            for partition_name in selected_partitions:
+                if partition_name in self.partitions_with_fstab:
+                    print(f"--- {lang.processing_partition.format(partition=partition_name)} ---")
+                    for fstab_path in self.partitions_with_fstab[partition_name]:
+                        process_fstab_for_encryption(fstab_path)
+                    modified_count += 1
+
+            def final_actions():
+                if not self.winfo_exists():
+                    return
+
+                self.run_button.config(state='normal', text=lang.run)
+                info_win(lang.disable_encryption_completed.format(modified_count=modified_count))
+                self.destroy()
+
+            self.after(0, final_actions)
+            
+    class MergeSparseImage(Toplevel):
+        def __init__(self):
+            super().__init__()
+            self.title(lang.merge_segments_title)
+            self.minsize(420, 240)
+
+            self.output_filename = StringVar(value="super.img")
+            self.delete_source = BooleanVar(value=False)
+            
+            self.run_button = None
+            self.progressbar = None
+            self.progress_label = None
+
+            self.gui()
+            move_center(self)
+
+        def gui(self):
+            main_frame = ttk.Frame(self, padding=10)
+            main_frame.pack(fill=BOTH, expand=True, padx=5, pady=5)
+
+            ttk.Label(main_frame, text=lang.merge_segments_info, wraplength=400, justify=LEFT).pack(pady=(0, 10), fill=X)
+            
+            is_project_selected = project_manger.exist()
+            if is_project_selected:
+                project_path_text = f"{lang.project_path_label} {project_manger.current_work_path()}"
+            else:
+                project_path_text = lang.no_project_selected_label
+            
+            ttk.Label(main_frame, text=project_path_text, foreground="gray", wraplength=380, justify=LEFT).pack(pady=(0, 10), fill=X, anchor='w')
+            
+            output_frame = ttk.Frame(main_frame)
+            output_frame.pack(fill=X, pady=5)
+            ttk.Label(output_frame, text=lang.output_filename_label, width=22).pack(side=LEFT)
+            ttk.Entry(output_frame, textvariable=self.output_filename).pack(side=LEFT, expand=True, fill=X)
+            
+            options_frame = ttk.Frame(main_frame)
+            options_frame.pack(fill=X, pady=5)
+            ttk.Checkbutton(options_frame, text=lang.delete_source_segments_checkbox, variable=self.delete_source, style="Switch.TCheckbutton").pack(side=LEFT, pady=5)
+            
+            self.run_button = ttk.Button(main_frame, text=lang.create_super_image_button, style="Accent.TButton", command=self.start_merge)
+            self.run_button.pack(fill=X, pady=(10, 5), ipady=4)
+            
+            self.progress_label = ttk.Label(main_frame, text="")
+            self.progressbar = ttk.Progressbar(main_frame, mode='determinate', maximum=100)
+            
+            if not is_project_selected:
+                self.run_button.config(state='disabled')
+                ttk.Label(main_frame, text=lang.select_project_to_enable, foreground="orange").pack(pady=(5,0))
+
+        def start_merge(self):
+            if not project_manger.exist():
+                warn_win(lang.project_not_selected) 
+                return
+
+            self.progress_label.pack(pady=(5, 0))
+            self.progressbar.pack(fill=X, pady=(2, 0), expand=True)
+            self.update_progress(0)
+
+            project_path = project_manger.current_work_path()
+            output_name = self.output_filename.get()
+            delete_source_files = self.delete_source.get()
+
+            create_thread(self._process_in_thread, project_path, output_name, delete_source_files)
+
+        def update_progress(self, percentage: int):
+            if not self.winfo_exists(): return
+            
+            self.run_button.config(state='disabled')
+
+            if percentage == -1: 
+                self.run_button.config(text=lang.merge_failed_label)
+                self.progressbar['value'] = 0
+                self.after(2000, self.finish_merge)
+                return
+
+            self.progressbar['value'] = percentage
+            
+            button_text = f"{lang.running} {percentage}%"
+            self.run_button.config(text=button_text)
+
+        def _process_in_thread(self, project_path, output_name, delete_source):
+            try:
+                result_status = "PENDING"
+
+                def progress_callback(percentage):
+                    nonlocal result_status
+                    if self.winfo_exists():
+                        if percentage > 0 and result_status == "PENDING":
+                            result_status = "PROCESSING"
+                        self.after(0, self.update_progress, percentage)
+
+                merge_sparse.main(
+                    project_path=project_path,
+                    output_name=output_name,
+                    delete_source=delete_source,
+                    progress_callback=progress_callback,
+                    utils=utils
+                )
+                
+                if result_status == "PENDING":
+                    if self.winfo_exists():
+                        self.after(0, lambda: utils.info_win(lang.no_segments_to_merge_in_project))
+
+            except Exception as e:
+                logging.exception("Error in MergeSparseImage thread")
+                error_msg = lang.unexpected_merge_error.format(error=e)
+                if self.winfo_exists():
+                    self.after(0, lambda: utils.warn_win(error_msg))
+            finally:
+                if self.winfo_exists():
+                    self.after(1500, self.finish_merge)
+
+        def finish_merge(self):
+            if self.winfo_exists():
+                self.progressbar.pack_forget()
+                self.progress_label.pack_forget()
+                self.run_button.config(state='normal', text=lang.create_super_image_button)         
 
 
 class Tool(Tk):
@@ -1970,6 +2319,7 @@ class SetUtils:
 
 
 settings = SetUtils(load=False)
+utils.settings = settings
 
 
 def re_folder(path, quiet=False):
@@ -4887,61 +5237,101 @@ def unpack_boot(name: str = 'boot', boot: str = None, work: str = None):
     os.chdir(cwd_path)
 
 @animation
-def dboot(name: str = 'boot', source: str = None, boot: str = None):
+def dboot(name: str = 'boot', source: str = None, boot:str = None):
     work = project_manger.current_work_path()
     flag = ''
     if boot is None:
         boot = findfile(f"{name}.img", work)
     if source is None:
-        source = work + name
+        source = os.path.join(work, name)
     if not os.path.exists(source):
-        print(f"Cannot Find {name}...")
-        return
+        print(f"Cannot Find {name} sources at '{source}'...")
+        return 1
 
-    if os.path.isdir(f"{source}/ramdisk"):
-        cpio_repack(f"{source}/ramdisk", f"{source}/ramdisk.txt", f"{source}/ramdisk-new.cpio")
-        with open(f"{source}/comp", "r", encoding='utf-8') as compf:
-            comp = compf.read()
-        print(f"Compressing:{comp}")
-        os.chdir(source)
-        if comp != "unknown":
-            if call(['magiskboot', f'compress={comp}', 'ramdisk-new.cpio']) != 0:
-                print("Failed to pack Ramdisk...")
-                os.remove("ramdisk-new.cpio")
-            else:
-                try:
-                    os.remove("ramdisk.cpio")
-                except (Exception, BaseException):
-                    logging.exception('Bugs')
-                if comp == 'gzip':
-                    comp = 'gz'
-                os.rename(f"ramdisk-new.cpio.{comp.split('_')[0]}", "ramdisk.cpio")
-        else:
-            if os.path.exists('ramdisk.cpio'):
-                os.remove("ramdisk.cpio")
-            os.rename("ramdisk-new.cpio", "ramdisk.cpio")
-        print(f"Ramdisk Compression:{comp}")
-        if comp == "unknown":
-            flag = "-n"
-        print("Successfully packed Ramdisk..")
-    os.chdir(source)
-    if call(['magiskboot', 'repack', flag, boot]) != 0:
-        print("Failed to Pack boot...")
-    else:
-        os.remove(boot)
-        os.rename(source + "/new-boot.img", project_manger.current_work_output_path() + f"/{name}.img")
-        os.chdir(cwd_path)
+    if os.path.isdir(os.path.join(source, "ramdisk")):
+        repack_result = cpio_repack(
+            os.path.join(source, "ramdisk"),
+            os.path.join(source, "ramdisk.txt"),
+            os.path.join(source, "ramdisk-new.cpio")
+        )
+
+        if repack_result != 0:
+            print(f"Failed to repack ramdisk for '{name}'. Aborting boot image creation.")
+            return 1
+
         try:
-            rmdir(source)
-        except (Exception, BaseException):
-            print(lang.warn11.format(name))
-        print("Successfully packed Boot...")
+            with open(os.path.join(source, "comp"), "r", encoding='utf-8') as compf:
+                comp = compf.read().strip()
+        except IOError as e:
+            print(f"Error reading compression type file: {e}")
+            return 1
+
+        print(f"Compressing ramdisk with: {comp}")
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(source)
+            
+            if comp != "unknown":
+                if call(['magiskboot', f'compress={comp}', 'ramdisk-new.cpio']) != 0:
+                    print("Failed to compress ramdisk...")
+                    if os.path.exists("ramdisk-new.cpio"): os.remove("ramdisk-new.cpio")
+                    return 1
+                
+                compressed_ext = comp.split('_')[0]
+                if compressed_ext == 'gzip': compressed_ext = 'gz'
+                compressed_filename = f"ramdisk-new.cpio.{compressed_ext}"
+
+                if os.path.exists('ramdisk.cpio'): os.remove('ramdisk.cpio')
+                os.rename(compressed_filename, "ramdisk.cpio")
+            else:
+                if os.path.exists('ramdisk.cpio'): os.remove('ramdisk.cpio')
+                os.rename("ramdisk-new.cpio", "ramdisk.cpio")
+            
+            print(f"Ramdisk packed and compressed successfully.")
+        finally:
+            os.chdir(original_cwd)
+
+    original_cwd_repack = os.getcwd()
+    try:
+        os.chdir(source)
+        repack_cmd = ['magiskboot', 'repack']
+        if not os.path.isdir(os.path.join(source, "ramdisk")):
+            flag = '-n'
+            repack_cmd.append(flag)
+        
+        repack_cmd.append(boot)
+
+        if call(repack_cmd) != 0:
+            print("Failed to pack boot image...")
+            return 1
+        
+        final_boot_image = os.path.join(project_manger.current_work_output_path(), f"{name}.img")
+        if os.path.exists(final_boot_image): os.remove(final_boot_image)
+        os.rename("new-boot.img", final_boot_image)
+        
+        print(f"Successfully packed Boot: {final_boot_image}")
+        
+    except Exception as e:
+        print(f"An error occurred during final boot repack: {e}")
+        return 1
+    finally:
+        os.chdir(original_cwd_repack)
+
+    try:
+        rmdir(source)
+    except Exception:
+        print(lang.warn11.format(name))
+    
+    return 0
 
 
 class Packxx(Toplevel):
     def __init__(self, list_):
         if not list_:
             return
+
+        super().__init__()
+
         self.lg = list_
         self.spatchvb = IntVar()
         self.custom_size = {}
@@ -4960,10 +5350,10 @@ class Packxx(Toplevel):
         self.fs_conver = BooleanVar(value=False)
 
         self.erofs_old_kernel = BooleanVar(value=False)
+
         if not self.verify():
             self.start_()
             return
-        super().__init__()
 
         self.title(lang.text42)
         lf1 = ttk.LabelFrame(self, text=lang.text43)
@@ -4975,7 +5365,6 @@ class Packxx(Toplevel):
         lf4 = ttk.LabelFrame(self, text=lang.text46)
         lf4.pack(fill=BOTH, pady=5, padx=5)
         (sf1 := Frame(lf3)).pack(fill=X, padx=5, pady=5, side=TOP)
-        # EXT4 Settings
         Label(lf1, text=lang.text48).pack(side='left', padx=5, pady=5)
         ttk.Combobox(lf1, state="readonly", values=("make_ext4fs", "mke2fs+e2fsdroid"), textvariable=self.dbfs).pack(
             side='left', padx=5, pady=5)
@@ -4989,7 +5378,6 @@ class Packxx(Toplevel):
             side='left', padx=5, pady=5)
         self.ext4_method.trace('w', lambda *x: self.show_modify_size())
         create_thread(self.show_modify_size)
-        #
         Label(lf3, text=lang.text49).pack(side='left', padx=5, pady=5)
         ttk.Combobox(lf3, state="readonly", textvariable=self.dbgs, values=("raw", "sparse", "br", "dat")).pack(padx=5,
                                                                                                                 pady=5,
@@ -5000,14 +5388,12 @@ class Packxx(Toplevel):
         ttk.Checkbutton(lf2, text=lang.t35, variable=self.erofs_old_kernel, onvalue=True, offvalue=False,
                         style="Switch.TCheckbutton").pack(
             padx=5, pady=5, fill=BOTH)
-        # --
         scales_erofs = ttk.Scale(lf2, from_=0, to=9, orient="horizontal",
                                  command=lambda x: self.label_e.config(text=lang.t30.format(int(float(x)))),
                                  variable=self.scale_erofs)
         self.label_e = tk.Label(lf2, text=lang.t30.format(int(scales_erofs.get())))
         self.label_e.pack(side='left', padx=5, pady=5)
         scales_erofs.pack(fill="x", padx=5, pady=5)
-        # --
         scales = ttk.Scale(sf1, from_=0, to=9, orient="horizontal",
                            command=lambda x: self.label.config(text=lang.text47.format(int(float(x))) % "Brotli"),
                            variable=self.scale)
@@ -5056,9 +5442,12 @@ class Packxx(Toplevel):
     def start_(self):
         module_manager.addon_loader.run_entry(module_manager.addon_entries.packing)
         try:
-            self.destroy()
+            if self.winfo_exists():
+                self.destroy()
+        except tk.TclError:
+            logging.info("Packxx window was already destroyed.")
         except AttributeError:
-            logging.exception('Bugs')
+            logging.exception('Bugs in Packxx.start_')
         self.packrom()
 
     def verify(self):
@@ -6583,63 +6972,76 @@ class ParseCmdline:
 
 
 def __init__tk(args: list):
-    if not os.path.exists(temp):
-        re_folder(temp, quiet=True)
-    if not os.path.exists(tool_log):
-        open(tool_log, 'w', encoding="utf-8", newline="\n").close()
-    logging.basicConfig(level=logging.DEBUG, format='%(levelname)s:%(asctime)s:%(filename)s:%(name)s:%(message)s',
-                        filename=tool_log, filemode='w')
-    global win
+    global win, current_project_name, theme, language, unpackg, project_menu
+    
     win = Tool()
     if os.name == 'nt':
         set_title_bar_color(win)
+    
     animation.set_master(win)
-    global current_project_name, theme, language
+    
     current_project_name = utils.project_name = StringVar()
     theme = StringVar()
     language = StringVar()
+
+    utils.settings = settings
+    utils.lang = lang
+    utils.call = call
+    utils.warn_win = warn_win
+    utils.info_win = info_win
+
     settings.load()
     if settings.updating in ['1', '2']:
         Updater()
     if int(settings.oobe) < 5:
         Welcome()
     init_verify()
+
     try:
         win.winfo_exists()
     except TclError:
-        logging.exception('TclError')
+        logging.exception('TclError during initial winfo_exists check. Aborting.')
         return
+
     win.gui()
-    global unpackg
     unpackg = UnpackGui()
-    global project_menu
     project_menu = ProjectMenuUtils()
     project_menu.gui()
     project_menu.listdir()
     unpackg.gui()
     Frame3().gui()
-    animation.load_gif(open_img(BytesIO(getattr(images, f"loading_{win.list2.get()}_byte"))))
-    animation.init()
+    
+    try:
+        gif_theme = "dark" if settings.theme == "dark" else "light"
+        animation.load_gif(open_img(BytesIO(getattr(images, f"loading_{gif_theme}_byte"))))
+        animation.init()
+    except Exception:
+        logging.exception("Failed to load animation GIF.")
+
     if not is_pro:
         print(lang.text108)
-    if is_pro:
-        if not verify.state:
-            Active(verify, settings, win, images, lang).gui()
-    win.update()
+    if is_pro and not verify.state:
+        Active(verify, settings, win, images, lang).gui()
 
+    win.update()
     move_center(win)
     win.get_time()
+    
+    logging.info(f"MIO-KITCHEN initialized in {dti() - start:.2f} seconds.")
     print(lang.text134 % (dti() - start))
+
     if os.name == 'nt':
         do_override_sv_ttk_fonts()
         if sys.getwindowsversion().major <= 6:
             ask_win(lang.warn20)
+            
     states.inited = True
     win.protocol("WM_DELETE_WINDOW", exit_tool)
+    
     if len(args) > 1 and is_pro:
         win.after(1000, ParseCmdline, args[1:])
+        
     win.mainloop()
-
 
 # Cool Init
 # Miside 米塔
