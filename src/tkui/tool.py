@@ -483,7 +483,7 @@ class ToolBox(ttk.Frame):
             (lang.disable_encryption, self.DisableEncryption),
             (lang.trim_image, self.TrimImage), # Trim Image
             (lang.magisk_patch, self.MagiskPatcher), # Magisk Patcher
-            (lang.mergequalcommimage, self.MergeQualcommImage_old), # Merge Qualcomm Image (Legacy)
+            (lang.mergequalcommimage, lambda: MergequalcommimageOld()), # Merge Qualcomm Image (Legacy)
             (lang.merge_file_segments, self.MergeSparseImage)
         ]
         width_controls = 3  # Number of buttons per row.
