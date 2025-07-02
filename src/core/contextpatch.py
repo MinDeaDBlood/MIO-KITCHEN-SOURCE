@@ -14,154 +14,88 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import re
-import sys
-import json
-from pathlib import Path
-from typing import Dict, Generator, List, Tuple, Optional
-
+import os
+from re import escape, search
+from typing import Any, Generator, Union, Optional
 from .utils import JsonEdit
 
 
-def scan_context(context_file_path: Path) -> Dict[str, str]:
-    contexts = {}
-    print(f"ContextPatcher: Reading original contexts from {context_file_path.name}...")
-    try:
-        with context_file_path.open("r", encoding='utf-8') as f:
-            for line_num, line in enumerate(f, 1):
-                line = line.strip()
-                if not line or line.startswith('#'):
-                    continue
-
-                parts = line.split()
-                if len(parts) < 2:
-                    print(f"[Warning] Malformed line {line_num}: '{line}'. Skipping.")
-                    continue
-
-                path, context = parts[0], parts[1]
-                path = path.replace(r'\@', '@')
-
-                if len(parts) > 2:
-                    print(f"[Warning] Line {line_num} has extra data: '{line}'. Using first two parts.")
-
-                contexts[path] = context
-    except FileNotFoundError:
-        print(f"[Warning] Context file not found: {context_file_path}. Proceeding with an empty context map.")
-    return contexts
+def scan_context(file) -> dict:  # 读取context文件返回一个字典
+    context = {}
+    with open(file, "r", encoding='utf-8') as file_:
+        for i in file_.readlines():
+            if not i.strip():
+                print('[W] data is empty!')
+                continue
+            filepath, rule, *other = i.strip().split()
+            filepath = filepath.replace(r'\@', '@')
+            context[filepath] = rule
+            if len(other) > 0:
+                print(f"[Warn] {i[0]} has too much data.Skip.")
+                del context[filepath]
+    return context
 
 
-def scan_dir(unpacked_dir: Path) -> Generator[str, None, None]:
-    yield "/"
-    if (unpacked_dir / "lost+found").exists():
-        yield "/lost\\+found"
-
-    for item_path in unpacked_dir.rglob('*'):
-        try:
-            relative_path = item_path.relative_to(unpacked_dir)
-            yield f"/{relative_path.as_posix()}"
-        except ValueError:
-            continue
-
-def context_patch(original_contexts: Dict[str, str],
-                  unpacked_dir: Path,
-                  fix_rules: Dict[str, str],
-                  partition_name: str) -> Tuple[Dict[str, str], int]:
-    compiled_rules: List[Tuple[re.Pattern, str]] = []
-    sorted_rules = sorted(fix_rules.items(), key=lambda item: len(item[0]), reverse=True)
-    
-    for pattern, context in sorted_rules:
-        if pattern.startswith(('//', '__comment')):
-            continue
-        if ' ' in context:
-            print(f"[Warning] Invalid context '{context}' for rule '{pattern}' contains a space. Skipping rule.")
-            continue
-        try:
-            compiled_rules.append((re.compile(pattern), context))
-        except re.error as e:
-            print(f"[Warning] Invalid regex '{pattern}' in fix rules: {e}. Skipping rule.")
-
-    new_contexts = original_contexts.copy()
-    newly_added_count = 0
-    patched_paths_cache = set()
-    
-    print("ContextPatcher: Scanning directory and patching contexts...")
-    for path_str_relative in scan_dir(unpacked_dir):
-        if path_str_relative in new_contexts or path_str_relative in patched_paths_cache:
-            continue
-        
-        path_to_check_for_rules = f"/{partition_name}{path_str_relative}".replace(f"/{partition_name}//", f"/{partition_name}/")
-        
-        assigned_context = None
-        for pattern, context in compiled_rules:
-            if pattern.search(path_to_check_for_rules):
-                assigned_context = context
-                break
-
-        if not assigned_context:
-            print(f"  [INFO] No specific rule for '{path_to_check_for_rules}', using safe default.")
-            assigned_context = 'u:object_r:system_file:s0'
-        
-        print(f"  [ADD]  {path_str_relative} -> {assigned_context}")
-        new_contexts[path_str_relative] = assigned_context
-        patched_paths_cache.add(path_str_relative)
-        newly_added_count += 1
-    
-    return new_contexts, newly_added_count
+def scan_dir(folder) -> Generator[Union[str, Any], Optional[Any], None]:  # 读取解包的目录，返回一个字典
+    part_name = os.path.basename(folder)
+    allfiles = ['/', '/lost+found', f'/{part_name}/lost+found', f'/{part_name}', f'/{part_name}/',
+                fr'/{part_name}(/.*)?']
+    for root, dirs, files in os.walk(folder, topdown=True):
+        for dir_ in dirs:
+            yield os.path.join(root, dir_).replace(folder, '/' + part_name).replace('\\', '/')
+        for file in files:
+            yield os.path.join(root, file).replace(folder, '/' + part_name).replace('\\', '/')
+        yield from allfiles
 
 
-def main(dir_path_str: str, fs_config_path_str: str, fix_permission_file_str: Optional[str]) -> None:
-    dir_path = Path(dir_path_str)
-    fs_config_path = Path(fs_config_path_str)
-    fix_permission_file = Path(fix_permission_file_str) if fix_permission_file_str else None
-    
-    try:
-        if not dir_path.is_dir():
-            print(f"[Error] Directory not found: {dir_path}", file=sys.stderr)
-            return
-            
-        fix_rules = {}
-        if fix_permission_file and fix_permission_file.is_file():
-            clean_lines = []
-            with fix_permission_file.open("r", encoding='utf-8') as f:
-                for line in f:
-                    stripped_line = line.strip()
-                    if not (stripped_line.startswith("//") or stripped_line.startswith('"//"') or '"__comment_"' in stripped_line):
-                        clean_lines.append(line)
-            
-            clean_json_string = "".join(clean_lines)
-            try:
-                fix_rules = json.loads(clean_json_string)
-            except json.JSONDecodeError as e:
-                print(f"[ERROR] Failed to parse context_rules.json: {e}")
-                fix_rules = {}
-        elif fix_permission_file:
-            print(f"[Warning] Fix permission file not found: {fix_permission_file}. Proceeding without it.")
+str_to_selinux = lambda string: escape(string).replace('\\-', '-') if not string.endswith('(/.*)?') else string
 
-        original_contexts = scan_context(fs_config_path.resolve())
-        partition_name = fs_config_path.name.replace("_file_contexts", "")
 
-        relative_original_contexts = {}
-        prefix_to_strip = f"/{partition_name}"
-        for path, context in original_contexts.items():
-            if path == prefix_to_strip or path == f"{prefix_to_strip}/":
-                relative_original_contexts["/"] = context
-            elif path.startswith(prefix_to_strip + '/'):
-                relative_path = path[len(prefix_to_strip):]
-                relative_original_contexts[relative_path] = context
-            else:
-                relative_original_contexts[path] = context
-        
-        new_fs, add_new = context_patch(relative_original_contexts, dir_path, fix_rules, partition_name)
+def context_patch(fs_file, dir_path, fix_permission: dict) -> tuple:  # 接收两个字典对比
+    new_fs = {}
+    # 定义已修补过的 避免重复修补
+    r_new_fs = {}
+    add_new = 0
+    print(f"ContextPatcher: the Original File Has {len(fs_file.keys()):d} entries")
+    # 定义默认SeLinux标签
+    permission_d = 'u:object_r:system_file:s0'
+    for i in scan_dir(os.path.abspath(dir_path)):
+        # 把不可打印字符替换为*
+        if not i.isprintable():
+            i = ''.join([c if c.isprintable() or not c.strip(' ') else '*' for c in i])
+        i = str_to_selinux(i)
 
-        with fs_config_path.open("w", encoding='utf-8', newline='\n') as f:
-            for path in sorted(new_fs.keys()):
-                f.write(f"{path} {new_fs[path]}\n")
-        
-        print(f'ContextPatcher: Successfully added {add_new} new entries. Total entries: {len(new_fs)}.')
+        if fs_file.get(i):
+            # 如果存在直接使用默认的
+            new_fs[i] = fs_file[i]
+        else:
+            permission = None
+            if r_new_fs.get(i):
+                continue
+            # 确认i不为空
+            if i:
+                # 搜索已定义的权限
+                for f in fix_permission.keys():
+                    if search(f, i):
+                        permission = fix_permission.get(f)
+                #upper
+                if not permission:
+                    permission = permission_d
+            if " " in permission:
+                permission = permission.replace(' ', '*')
+            print(f"ADD [{i} {permission}]")
+            add_new += 1
+            r_new_fs[i] = permission
+            new_fs[i] = permission
+    return new_fs, add_new
 
-    except FileNotFoundError:
-        print(f"[Error] Context file not found: {fs_config_path}", file=sys.stderr)
-    except Exception as e:
-        print(f"[Error] An unexpected error occurred: {e}", file=sys.stderr)
-        raise
+
+def main(dir_path, fs_config, fix_permission_file) -> None:
+    if fix_permission_file is not None:
+        fix_permission: dict = JsonEdit(fix_permission_file).read()
+    else:
+        fix_permission = {}
+    new_fs, add_new = context_patch(scan_context(os.path.abspath(fs_config)), dir_path, fix_permission)
+    with open(fs_config, "w+", encoding='utf-8', newline='\n') as f:
+        f.writelines([f"{i} {new_fs[i]}\n" for i in sorted(new_fs.keys())])
+    print(f'ContextPatcher: Add {add_new:d} entries')
