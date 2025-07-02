@@ -5547,7 +5547,7 @@ class Packxx(Toplevel):
                 if os.path.exists(contexts_file):
                     if settings.contextpatch == "1":
                         contextpatch.main(work + dname, contexts_file, context_rule_file)
-                        new_rules = contextpatch.scan_context(contexts_file)
+                        new_rules = contextpatch.scan_context(pathlib.Path(contexts_file))
                         rules = JsonEdit(context_rule_file)
                         rules.write(new_rules | rules.read())
 
