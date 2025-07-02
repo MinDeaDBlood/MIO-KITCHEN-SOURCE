@@ -14,153 +14,68 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-Patch Fs_Config To Add Missing File Config
-"""
 import os
-from collections import deque
-
+from pathlib import Path
+from typing import Dict, Generator
 
 def scanfs(file: str) -> dict:
-    """
-    Scan Origin File , Return A dict
-    :param file:
-    :return:
-    """
     filesystem_config = {}
-    with open(file, "r", encoding='utf-8') as file_:
-        for i in file_.readlines():
-            if not i.strip():
-                print("[W] data is empty!")
-                continue
-            try:
-                filepath, *other = i.strip().split()
-            except (TypeError,) as e:
-                print(f'[W] Skip {i} {e}')
-                continue
-            filesystem_config[filepath] = other
-            if (long := len(other)) > 4:
-                print(f"[W] {i[0]} has too much data-{long}.")
+    try:
+        with open(file, "r", encoding='utf-8') as file_:
+            for line in file_:
+                line = line.strip()
+                if not line:
+                    continue
+                parts = line.split()
+                if parts:
+                    filesystem_config[parts[0]] = parts[1:]
+    except FileNotFoundError:
+        print(f"[Warning] Original fs_config not found at {file}")
     return filesystem_config
 
+def scan_dir(scan_root: Path) -> Generator[str, None, None]:
+    if (scan_root / "lost+found").is_dir():
+        yield "lost+found"
+    for item_path in scan_root.rglob('*'):
+        yield item_path.relative_to(scan_root).as_posix()
 
-def scan_dir(folder: str) -> list:
-    """
-    Scan Folder , Return A path One By One
-    :param folder:
-    :return:
-    """
-    allfiles = ['/', '/lost+found']
-    if os.name == 'nt':
-        yield os.path.basename(folder).replace('\\', '')
-    elif os.name == 'posix':
-        yield os.path.basename(folder).replace('/', '')
-    else:
-        yield os.path.basename(folder)
-    for root, dirs, files in os.walk(folder, topdown=True):
-        for dir_ in dirs:
-            yield os.path.join(root, dir_).replace(folder, os.path.basename(folder)).replace('\\', '/')
-        for file in files:
-            yield os.path.join(root, file).replace(folder, os.path.basename(folder)).replace('\\', '/')
-        yield from allfiles
-
-
-def islink(file) -> str:
-    """
-    Determine if it is a SymLink
-    :param file:
-    :return:
-    """
-    if os.name == 'nt':
-        if not os.path.isdir(file):
-            with open(file, 'rb') as f:
-                if f.read(10) == b'!<symlink>':
-                    return f.read().decode("utf-16")[:-1]
-    elif os.name == 'posix':
-        if os.path.islink(file):
-            return os.readlink(file)
-    return ''
-
-
-def fs_patch(fs_file, dir_path) -> tuple:  # 接收两个字典对比
-    """
-    Patch fs_file, Add Missing File Config
-    :param fs_file:
-    :param dir_path:
-    :return:
-    """
-    new_fs = {}
+def fs_patch(fs_config_data: Dict[str, list], source_dir: str) -> tuple:
+    new_fs = fs_config_data.copy()
     new_add = 0
-    r_fs = deque()
-    print(f"FsPatcher: The original file has {len(fs_file.keys()):d} entries")
-    for i in scan_dir(os.path.abspath(dir_path)):
-        if not i.isprintable():
-            tmp = ''
-            for c in i:
-                tmp += c if c.isprintable() else '*'
-            i = tmp.replace(' ', '*')
-        if fs_file.get(i):
-            new_fs[i] = fs_file[i]
+    source_path = Path(source_dir)
+
+    print(f"FsPatcher: The original file has {len(fs_config_data)} entries")
+
+    for rel_path_str in scan_dir(source_path):
+        if rel_path_str in new_fs:
+            continue
+        
+        full_disk_path = source_path / rel_path_str
+        if not full_disk_path.exists(): continue
+
+        if full_disk_path.is_dir():
+            config = ['0', '0', '0755']
         else:
-            if i in r_fs:
-                continue
-            if os.name == 'nt':
-                filepath = os.path.abspath(dir_path + os.sep + ".." + os.sep + i.replace('/', '\\'))
-            else:
-                filepath = os.path.abspath(dir_path + os.sep + ".." + os.sep + i)
-            if os.path.isdir(filepath):
-                if "system/bin" in i or "system/xbin" in i or "vendor/bin" in i:
-                    gid = '2000'
-                else:
-                    gid = '0'
-                # dir path always 755
-                config = ['0', gid, '0755']
-            elif not os.path.exists(filepath):
-                config = ['0', '0', '0755']
-            elif islink(filepath):
-                if ("system/bin" in i) or ("system/xbin" in i) or ("vendor/bin" in i):
-                    gid = '2000'
-                else:
-                    gid = '0'
-                if ("/bin" in i) or ("/xbin" in i):
-                    mode = '0755'
-                elif ".sh" in i:
-                    mode = "0750"
-                else:
-                    mode = "0644"
-                config = ['0', gid, mode, islink(filepath)]
-            elif ("/bin" in i) or ("/xbin" in i):
-                mode = '0755'
-                if ("system/bin" in i) or ("system/xbin" in i) or ("vendor/bin" in i):
-                    gid = '2000'
-                else:
-                    gid = '0'
-                    mode = '0755'
-                if ".sh" in i:
-                    mode = "0750"
-                else:
-                    for s in ["/bin/su", "/xbin/su", "disable_selinux.sh", "daemon", "ext/.su", "install-recovery",
-                              'installed_su', 'bin/rw-system.sh', 'bin/getSPL']:
-                        if s in i:
-                            mode = "0755"
-                config = ['0', gid, mode]
-            else:
-                config = ['0', '0', '0644']
-            print(f'Add [{i}{config}]')
-            r_fs.append(i)
-            new_add += 1
-            new_fs[i] = config
+            config = ['0', '0', '0644']
+
+        if "bin/" in rel_path_str or "xbin/" in rel_path_str or rel_path_str.endswith(".sh"):
+            config[2] = '0755'
+        
+        print(f'Add [{rel_path_str} {config}]')
+        new_fs[rel_path_str] = config
+        new_add += 1
+
+    if '/' not in new_fs:
+         new_fs['/'] = ['0', '0', '0755']
+
     return new_fs, new_add
 
-
-def main(dir_path: str, fs_config: str):
-    """
-    List The Dir_Path and Add Missing file config
-    :param dir_path:
-    :param fs_config:
-    :return:
-    """
-    new_fs, new_add = fs_patch(scanfs(os.path.abspath(fs_config)), dir_path)
-    with open(fs_config, "w", encoding='utf-8', newline='\n') as f:
-        f.writelines([f"{i} {' '.join(new_fs[i])}\n" for i in sorted(new_fs.keys())])
+def main(dir_path: str, fs_config_path: str):
+    original_config = scanfs(fs_config_path)
+    new_fs_config, new_add = fs_patch(original_config, dir_path)
+    
+    with open(fs_config_path, "w", encoding='utf-8', newline='\n') as f:
+        for path in sorted(new_fs_config.keys()):
+            f.write(f"{path} {' '.join(new_fs_config[path])}\n")
+            
     print(f'FsPatcher: Added {new_add} entries')
