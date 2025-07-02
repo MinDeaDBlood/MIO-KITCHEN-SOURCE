@@ -5547,7 +5547,7 @@ class Packxx(Toplevel):
                 if os.path.exists(contexts_file):
                     if settings.contextpatch == "1":
                         contextpatch.main(work + dname, contexts_file, context_rule_file)
-                        new_rules = contextpatch.scan_context(pathlib.Path(contexts_file))
+                        new_rules = contextpatch.scan_context(contexts_file)
                         rules = JsonEdit(context_rule_file)
                         rules.write(new_rules | rules.read())
 
@@ -6238,6 +6238,10 @@ def datbr(work, name, brl: any, dat_ver=4):
         print(lang.text87 % name)
     else:
         print(lang.text88 % (name, 'br'))
+        output_br_path = f"{work}/{name}.new.dat.br"
+        if os.path.exists(output_br_path):
+            print(f"Removing existing file: {output_br_path}")
+            os.remove(output_br_path)
         call(['brotli', '-q', str(brl), '-j', '-w', '24', f"{work}/{name}.new.dat", '-o', f"{work}/{name}.new.dat.br"])
         if os.access(f"{work}/{name}.new.dat", os.F_OK):
             try:
@@ -6247,7 +6251,10 @@ def datbr(work, name, brl: any, dat_ver=4):
         print(lang.text89 % (name, 'br'))
 
 
-def mkerofs(name: str, format_, work, work_output, level, old_kernel: bool = False, UTC: int = None):
+def mkerofs(name: str, format_, work, work_output, level, old_kernel: bool = False, UTC: int = None, source_dir: str = None):
+    if source_dir is None: 
+        source_dir = os.path.join(work, name)
+        
     if not UTC:
         UTC = int(time.time())
     print(lang.text90 % (name, format_ + f',{level}', "1.x"))
@@ -6257,39 +6264,42 @@ def mkerofs(name: str, format_, work, work_output, level, old_kernel: bool = Fal
            f'--product-out={work}',
            f'--fs-config-file={work}/config/{name}_fs_config',
            f'--file-contexts={work}/config/{name}_file_contexts',
-           f'{work_output}/{name}.img', f'{work}/{name}/']
+           f'{work_output}/{name}.img', f'{source_dir}/'] 
     return call(cmd, out=False)
 
 
 @animation
 def make_ext4fs(name: str, work: str, work_output, sparse: bool = False, size: int = 0, UTC: int = None,
-                has_contexts: bool = True):
+                has_contexts: bool = True, source_dir: str = None):
+    if source_dir is None:
+        source_dir = os.path.join(work, name)
     if not has_contexts:
         print('Warning:file_context not found!!!')
     print(lang.text91 % name)
     if not UTC:
         UTC = int(time.time())
     if not size:
-        size = GetFolderSize(work + name, 1, 3, f"{work}/dynamic_partitions_op_list").rsize_v
+        size = GetFolderSize(source_dir, 1, 3, f"{work}/dynamic_partitions_op_list").rsize_v
     print(f"{name}:[{size}]")
     context_cmd = ['-S', f'{work}/config/{name}_file_contexts'] if has_contexts else []
-    command = ['make_ext4fs', '-J', '-T', f'{UTC}', '-s' if sparse else '', *context_cmd, '-l',
-               f'{size}',
-               '-C', f'{work}/config/{name}_fs_config', '-L', name, '-a', f'/{name}', f"{work_output}/{name}.img",
-               work + name]
+    command = ['make_ext4fs', '-J', '-T', f'{UTC}', '-s' if sparse else '']
+    command.extend(context_cmd)
+    command.extend(['-l', f'{size}', '-C', f'{work}/config/{name}_fs_config', '-L', name, '-a', f'/{name}', f"{work_output}/{name}.img", source_dir])
     return call(command)
 
 
 @animation
-def make_f2fs(name: str, work: str, work_output: str, UTC: int = None):
+def make_f2fs(name: str, work: str, work_output: str, UTC: int = None, source_dir: str = None):
+    if source_dir is None:
+        source_dir = os.path.join(work, name)
     print(lang.text91 % name)
-    size = GetFolderSize(work + name, 1, 1).rsize_v
+    size = GetFolderSize(source_dir, 1, 1).rsize_v
     print(f"{name}:[{size}]")
     size_f2fs = (54 * 1024 * 1024) + size
     size_f2fs = int(size_f2fs * 1.15) + 1
     if not UTC:
         UTC = int(time.time())
-    with open(f"{work + name}.img", 'wb') as f:
+    with open(f"{work_output}/{name}.img", 'wb') as f:
         f.truncate(size_f2fs)
     if call(['mkfs.f2fs', f"{work_output}/{name}.img", '-O', 'extra_attr', '-O', 'inode_checksum', '-O', 'sb_checksum',
              '-O',
@@ -6297,7 +6307,7 @@ def make_f2fs(name: str, work: str, work_output: str, UTC: int = None):
         return 1
     # The efficiency of verifying and adding file contexts has been improved.
     # Let's confirm that the basic context for the partition is present.
-    line_to_ensure = f'/{name}/{name} u:object_r:system_file:s0\n'
+    line_to_ensure = f'/{name}(/.*)? u:object_r:system_file:s0\n'
     file_contexts_path = f'{work}/config/{name}_file_contexts'
     
     found = False
@@ -6315,14 +6325,16 @@ def make_f2fs(name: str, work: str, work_output: str, UTC: int = None):
         with open(file_contexts_path, 'a', encoding='utf-8') as f_append:
             f_append.write(line_to_ensure)
     return call(
-        ['sload.f2fs', '-f', work + name, '-C', f'{work}/config/{name}_fs_config', '-T', f'{UTC}', '-s',
+        ['sload.f2fs', '-f', source_dir, '-C', f'{work}/config/{name}_fs_config', '-T', f'{UTC}', '-s',
          f'{work}/config/{name}_file_contexts', '-t', f'/{name}', '-c', f'{work_output}/{name}.img'])
 
 
-def mke2fs(name: str, work: str, sparse: bool, work_output: str, size: int = 0, UTC: int = None):
+def mke2fs(name: str, work: str, sparse: bool, work_output: str, size: int = 0, UTC: int = None, source_dir: str = None):
     if isinstance(size, str): size = int(size)
+    if source_dir is None:
+        source_dir = os.path.join(work, name)
     print(lang.text91 % name)
-    size = GetFolderSize(work + name, 4096, 3,
+    size = GetFolderSize(source_dir, 4096, 3,
                          f"{work}/dynamic_partitions_op_list").rsize_v if not size else size / 4096
     print(f"{name}:[{size}]")
     if not UTC:
@@ -6337,7 +6349,7 @@ def mke2fs(name: str, work: str, sparse: bool, work_output: str, size: int = 0, 
         return 1
     ret = call(
         ['e2fsdroid', '-e', '-T', f'{UTC}', '-S', f'{work}/config/{name}_file_contexts', '-C',
-         f'{work}/config/{name}_fs_config', '-a', f'/{name}', '-f', f'{work}/{name}',
+         f'{work}/config/{name}_fs_config', '-a', f'/{name}', '-f', source_dir,
          f'{work_output}/{name}_new.img'], out=not os.name == 'posix')
     if ret != 0:
         rmdir(f'{work}/{name}_new.img')
