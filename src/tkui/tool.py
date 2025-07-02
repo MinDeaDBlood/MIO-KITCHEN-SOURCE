@@ -26,7 +26,7 @@ from random import randrange
 from tkinter.ttk import Scrollbar
 from src.core.avb_disabler import process_fstab
 from src.core.encryption_disabler import process_fstab_for_encryption
-from src.core import merge_sparse
+from src.core import merge_sparse 
 from src.core import tarsafe, miside_banner
 from src.core.Magisk import Magisk_patch
 from src.core.addon_register import loader, Entry
@@ -99,39 +99,34 @@ from .controls import ListBox, ScrollFrame
 from src.core.undz import DZFileTools
 from src.core.selinux_audit_allow import main as selinux_audit_allow
 import logging
-import os
-import time
-from src.core import utils 
 
 # =========================================================================
-# 2. Logging Initialization Block
+# 2. Блок инициализации логирования
 # =========================================================================
 
-# Define base paths and variables
+# Определяем базовые пути и переменные
 cwd_path = utils.prog_path
 temp = os.path.join(cwd_path, "bin", "temp").replace(os.sep, '/')
 
-# Create the log directory if it doesn't exist
+# Создаем директорию для логов, если ее нет
 if not os.path.exists(temp):
     os.makedirs(temp, exist_ok=True) 
 
-# Generate a unique log file name with a timestamp
+# Генерируем имя файла лога
 tool_log = f'{temp}/{time.strftime("%Y%m%d_%H-%M-%S", time.localtime())}_{v_code()}.log'
 
-# Configure logging. This must be done BEFORE the first call to any logging function.
-# force=True (for Python 3.8+) ensures that this configuration is applied,
-# even if a basic configuration has already been set up somewhere else.
+# Настраиваем логирование. Это должно быть сделано ДО первого вызова logging.
+# force=True (для Python 3.8+) гарантирует, что эта настройка применится.
 try:
     logging.basicConfig(
         level=logging.DEBUG, 
         format='%(levelname)s:%(asctime)s:%(filename)s:%(name)s:%(message)s',
         filename=tool_log, 
         filemode='w',
-        force=True  # Re-configures the logging module
+        force=True
     )
 except TypeError:
-    # Fallback for Python < 3.8, where the 'force' argument is not available.
-    # Note: This might not work as expected if logging was already configured elsewhere.
+    # Запасной вариант для Python < 3.8, где нет 'force'.
     logging.basicConfig(
         level=logging.DEBUG, 
         format='%(levelname)s:%(asctime)s:%(filename)s:%(name)s:%(message)s',
@@ -139,7 +134,6 @@ except TypeError:
         filemode='w'
     )
 
-# Log the initial configuration message
 logging.info("Logging configured successfully. Log level: DEBUG. Log file: %s", tool_log)
 
 is_pro = False
@@ -160,6 +154,7 @@ try:
     from src.core.pycase import ensure_dir_case_sensitive
 except ImportError:
     ensure_dir_case_sensitive = lambda *x: print(f'Cannot sensitive {x}, Not Supported')
+
 
 if os.name == 'nt':
     def set_title_bar_color(window, dark_value: int = 20):
@@ -512,7 +507,7 @@ class ToolBox(ttk.Frame):
             (lang.t59, self.GetFileInfo), # Get File Info
             (lang.t60, self.FileBytes), # File Bytes Operations
             (lang.audit_allow, self.SelinuxAuditAllow), # Selinux Audit Allow
-            (lang.disable_avb, self.DisableAVB), 
+            (lang.disable_avb, self.DisableAVB), # Предполагается, что lang.disable_avb = "Удалить AVB в fstab"
             (lang.disable_encryption, self.DisableEncryption),
             (lang.trim_image, self.TrimImage), # Trim Image
             (lang.magisk_patch, self.MagiskPatcher), # Magisk Patcher
@@ -1070,18 +1065,20 @@ class ToolBox(ttk.Frame):
             self.do_trim()
             self.button.configure(text=lang.done, state='normal', style='')
 
-            
     class DisableAVB(Toplevel):
+        """A Toplevel window for disabling AVB by patching fstab files in the current project."""
         def __init__(self):
             super().__init__()
             self.title(lang.disable_avb)
             self.minsize(450, 350)
+            # A dictionary to store {partition_name: [list_of_fstab_paths]}
             self.partitions_with_fstab = {}
             self.gui()
             move_center(self)
             create_thread(self.scan_partitions)
 
         def gui(self):
+            """Creates the graphical user interface for the window."""
             info_frame = ttk.Frame(self)
             info_frame.pack(padx=10, pady=(10, 5), fill=X)
             ttk.Label(info_frame, text=lang.disable_avb_info, wraplength=400).pack(fill=X)
@@ -1102,6 +1099,7 @@ class ToolBox(ttk.Frame):
             self.run_button.pack(side=RIGHT, fill=X, expand=True)
 
         def scan_partitions(self):
+            """Scans the project for partitions containing fstab files and displays them."""
             self.list_box.clear()
             self.partitions_with_fstab.clear()
 
@@ -1116,6 +1114,7 @@ class ToolBox(ttk.Frame):
             if os.path.exists(parts_info_path):
                 parts_dict = JsonEdit(parts_info_path).read()
 
+            # Scan and group fstab files by their parent partition
             for item_name in sorted(os.listdir(work_path)):
                 item_path = os.path.join(work_path, item_name)
                 if os.path.isdir(item_path):
@@ -1126,6 +1125,7 @@ class ToolBox(ttk.Frame):
                                     self.partitions_with_fstab[item_name] = []
                                 self.partitions_with_fstab[item_name].append(os.path.join(root, file))
 
+            # Populate the ListBox with unique partitions
             if not self.partitions_with_fstab:
                 print(lang.no_fstab_partitions_found)
                 self.run_button.config(state='disabled')
@@ -1137,6 +1137,7 @@ class ToolBox(ttk.Frame):
                 self.run_button.config(state='normal')
 
         def run_disable_avb(self):
+            """Starts the process to disable AVB."""
             selected_partitions = self.list_box.selected
             if not selected_partitions:
                 warn_win(lang.select_partition_to_disable_avb)
@@ -1146,15 +1147,18 @@ class ToolBox(ttk.Frame):
             create_thread(self._process_in_thread, selected_partitions)
 
         def _process_in_thread(self, selected_partitions):
+            """Background thread for processing."""
             processed_count = 0
             for partition_name in selected_partitions:
                 if partition_name in self.partitions_with_fstab:
                     print(f"--- {lang.processing_partition.format(partition=partition_name)} ---")
+                    # Process all fstab files found in this partition
                     for fstab_path in self.partitions_with_fstab[partition_name]:
-                        process_fstab(fstab_path) 
+                        process_fstab(fstab_path) # Call the AVB patcher
                     processed_count += 1
 
             def final_actions():
+                """Safely update the GUI from the main thread."""
                 if self.winfo_exists():
                     self.run_button.config(state='normal', text=lang.run)
                     info_win(lang.disable_avb_completed.format(processed_count=processed_count))
@@ -1164,6 +1168,7 @@ class ToolBox(ttk.Frame):
 
 
     class DisableEncryption(Toplevel):
+        """A Toplevel window for disabling forced encryption by patching fstab files."""
         def __init__(self):
             super().__init__()
             self.title(lang.disable_encryption)
@@ -1174,6 +1179,7 @@ class ToolBox(ttk.Frame):
             create_thread(self.scan_partitions)
 
         def gui(self):
+            """Creates the graphical user interface for the window."""
             info_frame = ttk.Frame(self)
             info_frame.pack(padx=10, pady=(10, 5), fill=X)
             ttk.Label(info_frame, text=lang.disable_encryption_info, wraplength=400).pack(fill=X)
@@ -1194,6 +1200,7 @@ class ToolBox(ttk.Frame):
             self.run_button.pack(side=RIGHT, fill=X, expand=True)
 
         def scan_partitions(self):
+            """Scans the current project for all partitions containing fstab files."""
             self.list_box.clear()
             self.partitions_with_fstab.clear()
 
@@ -1229,6 +1236,7 @@ class ToolBox(ttk.Frame):
                 self.run_button.config(state='normal')
 
         def run_disable_encryption(self):
+            """Starts the process to disable encryption for selected partitions."""
             selected_partitions = self.list_box.selected
             if not selected_partitions:
                 warn_win(lang.select_partition_to_disable_avb)
@@ -1238,6 +1246,7 @@ class ToolBox(ttk.Frame):
             create_thread(self._process_in_thread, selected_partitions)
 
         def _process_in_thread(self, selected_partitions):
+            """Internal method for execution in a separate thread."""
             modified_count = 0
             for partition_name in selected_partitions:
                 if partition_name in self.partitions_with_fstab:
@@ -1247,6 +1256,7 @@ class ToolBox(ttk.Frame):
                     modified_count += 1
 
             def final_actions():
+                """This function is executed in the main GUI thread for safe UI updates."""
                 if not self.winfo_exists():
                     return
 
@@ -1256,23 +1266,29 @@ class ToolBox(ttk.Frame):
 
             self.after(0, final_actions)
             
+    # tool.py (фрагмент)
+
     class MergeSparseImage(Toplevel):
+        """Окно для объединения частей sparse-образов с реальным прогрессом."""
         def __init__(self):
             super().__init__()
             self.title(lang.merge_segments_title)
             self.minsize(420, 240)
 
+            # --- Переменные для UI ---
             self.output_filename = StringVar(value="super.img")
             self.delete_source = BooleanVar(value=False)
             
+            # --- Виджеты и состояния ---
             self.run_button = None
             self.progressbar = None
-            self.progress_label = None
+            self.progress_label = None # Метка для текста с процентами
 
             self.gui()
             move_center(self)
 
         def gui(self):
+            """Создает графический интерфейс окна."""
             main_frame = ttk.Frame(self, padding=10)
             main_frame.pack(fill=BOTH, expand=True, padx=5, pady=5)
 
@@ -1306,8 +1322,9 @@ class ToolBox(ttk.Frame):
                 ttk.Label(main_frame, text=lang.select_project_to_enable, foreground="orange").pack(pady=(5,0))
 
         def start_merge(self):
+            """Запускает процесс объединения в фоновом потоке."""
             if not project_manger.exist():
-                warn_win(lang.project_not_selected) 
+                warn_win(lang.project_not_selected) # Используется существующий ключ
                 return
 
             self.progress_label.pack(pady=(5, 0))
@@ -1321,11 +1338,12 @@ class ToolBox(ttk.Frame):
             create_thread(self._process_in_thread, project_path, output_name, delete_source_files)
 
         def update_progress(self, percentage: int):
+            """Обновляет GUI с новым значением прогресса. Вызывается из основного потока."""
             if not self.winfo_exists(): return
             
             self.run_button.config(state='disabled')
 
-            if percentage == -1: 
+            if percentage == -1: # Сигнал об ошибке
                 self.run_button.config(text=lang.merge_failed_label)
                 self.progressbar['value'] = 0
                 self.after(2000, self.finish_merge)
@@ -1333,16 +1351,20 @@ class ToolBox(ttk.Frame):
 
             self.progressbar['value'] = percentage
             
+            # Обновляем текст кнопки, используя ключ "running"
             button_text = f"{lang.running} {percentage}%"
             self.run_button.config(text=button_text)
 
         def _process_in_thread(self, project_path, output_name, delete_source):
+            """Логика, которая выполняется в фоновом потоке."""
             try:
+                # --- ИЗМЕНЕНИЕ: Создаем переменную для отслеживания результата ---
                 result_status = "PENDING"
 
                 def progress_callback(percentage):
                     nonlocal result_status
                     if self.winfo_exists():
+                        # Если работа началась, меняем статус
                         if percentage > 0 and result_status == "PENDING":
                             result_status = "PROCESSING"
                         self.after(0, self.update_progress, percentage)
@@ -1355,6 +1377,8 @@ class ToolBox(ttk.Frame):
                     utils=utils
                 )
                 
+                # --- ИЗМЕНЕНИЕ: Проверяем, был ли процесс запущен ---
+                # Если после выполнения main статус все еще PENDING, значит, файлы не были найдены
                 if result_status == "PENDING":
                     if self.winfo_exists():
                         self.after(0, lambda: utils.info_win(lang.no_segments_to_merge_in_project))
@@ -1369,11 +1393,12 @@ class ToolBox(ttk.Frame):
                     self.after(1500, self.finish_merge)
 
         def finish_merge(self):
+            """Обновляет GUI после завершения процесса."""
             if self.winfo_exists():
                 self.progressbar.pack_forget()
                 self.progress_label.pack_forget()
-                self.run_button.config(state='normal', text=lang.create_super_image_button)         
-
+                self.run_button.config(state='normal', text=lang.create_super_image_button)  
+        
 
 class Tool(Tk):
     def __init__(self):
@@ -5244,22 +5269,29 @@ def dboot(name: str = 'boot', source: str = None, boot:str = None):
     if boot is None:
         boot = findfile(f"{name}.img", work)
     if source is None:
-        source = os.path.join(work, name)
+        source = os.path.join(work, name) # Используем os.path.join для надежности
     if not os.path.exists(source):
         print(f"Cannot Find {name} sources at '{source}'...")
-        return 1
+        return 1 # Возвращаем код ошибки
 
     if os.path.isdir(os.path.join(source, "ramdisk")):
+        # --- ИСПРАВЛЕНИЕ НАЧИНАЕТСЯ ЗДЕСЬ ---
+        
+        # 1. Вызываем repack и сохраняем результат
         repack_result = cpio_repack(
             os.path.join(source, "ramdisk"),
             os.path.join(source, "ramdisk.txt"),
             os.path.join(source, "ramdisk-new.cpio")
         )
 
+        # 2. Проверяем, успешно ли завершился repack
         if repack_result != 0:
             print(f"Failed to repack ramdisk for '{name}'. Aborting boot image creation.")
-            return 1
+            # Важно! Завершаем выполнение функции, чтобы не продолжать с ошибкой.
+            return 1 # Возвращаем код ошибки
 
+        # --- Весь последующий код выполнится ТОЛЬКО в случае успеха ---
+        
         try:
             with open(os.path.join(source, "comp"), "r", encoding='utf-8') as compf:
                 comp = compf.read().strip()
@@ -5268,16 +5300,17 @@ def dboot(name: str = 'boot', source: str = None, boot:str = None):
             return 1
 
         print(f"Compressing ramdisk with: {comp}")
-        original_cwd = os.getcwd()
+        original_cwd = os.getcwd() # Сохраняем текущую директорию
         try:
-            os.chdir(source)
+            os.chdir(source) # Переходим в директорию, где лежат файлы
             
             if comp != "unknown":
                 if call(['magiskboot', f'compress={comp}', 'ramdisk-new.cpio']) != 0:
                     print("Failed to compress ramdisk...")
                     if os.path.exists("ramdisk-new.cpio"): os.remove("ramdisk-new.cpio")
-                    return 1
+                    return 1 # Возвращаем ошибку
                 
+                # Имя сжатого файла зависит от типа сжатия
                 compressed_ext = comp.split('_')[0]
                 if compressed_ext == 'gzip': compressed_ext = 'gz'
                 compressed_filename = f"ramdisk-new.cpio.{compressed_ext}"
@@ -5290,13 +5323,15 @@ def dboot(name: str = 'boot', source: str = None, boot:str = None):
             
             print(f"Ramdisk packed and compressed successfully.")
         finally:
-            os.chdir(original_cwd)
+            os.chdir(original_cwd) # Всегда возвращаемся в исходную директорию
 
+    # Продолжение логики repack boot...
     original_cwd_repack = os.getcwd()
     try:
         os.chdir(source)
         repack_cmd = ['magiskboot', 'repack']
         if not os.path.isdir(os.path.join(source, "ramdisk")):
+            # Если ramdisk не было, возможно, нужно передать флаг -n
             flag = '-n'
             repack_cmd.append(flag)
         
@@ -5306,6 +5341,7 @@ def dboot(name: str = 'boot', source: str = None, boot:str = None):
             print("Failed to pack boot image...")
             return 1
         
+        # Перемещаем результат в папку Output
         final_boot_image = os.path.join(project_manger.current_work_output_path(), f"{name}.img")
         if os.path.exists(final_boot_image): os.remove(final_boot_image)
         os.rename("new-boot.img", final_boot_image)
@@ -5316,14 +5352,15 @@ def dboot(name: str = 'boot', source: str = None, boot:str = None):
         print(f"An error occurred during final boot repack: {e}")
         return 1
     finally:
-        os.chdir(original_cwd_repack)
+        os.chdir(original_cwd_repack) # Возвращаемся
 
+    # Очистка временной директории, если нужно
     try:
         rmdir(source)
     except Exception:
         print(lang.warn11.format(name))
     
-    return 0
+    return 0 # Успешное завершение
 
 
 class Packxx(Toplevel):
@@ -5331,6 +5368,8 @@ class Packxx(Toplevel):
         if not list_:
             return
 
+        # Вызываем конструктор родителя Toplevel В ПЕРВУЮ ОЧЕРЕДЬ.
+        # Теперь 'self' является полноценным виджетом.
         super().__init__()
 
         self.lg = list_
@@ -5352,10 +5391,12 @@ class Packxx(Toplevel):
 
         self.erofs_old_kernel = BooleanVar(value=False)
 
+        # Теперь, когда объект полностью инициализирован, эта проверка безопасна.
         if not self.verify():
             self.start_()
             return
 
+        # Продолжаем создание остального GUI
         self.title(lang.text42)
         lf1 = ttk.LabelFrame(self, text=lang.text43)
         lf1.pack(fill=BOTH, padx=5, pady=5)
@@ -5366,6 +5407,7 @@ class Packxx(Toplevel):
         lf4 = ttk.LabelFrame(self, text=lang.text46)
         lf4.pack(fill=BOTH, pady=5, padx=5)
         (sf1 := Frame(lf3)).pack(fill=X, padx=5, pady=5, side=TOP)
+        # EXT4 Settings
         Label(lf1, text=lang.text48).pack(side='left', padx=5, pady=5)
         ttk.Combobox(lf1, state="readonly", values=("make_ext4fs", "mke2fs+e2fsdroid"), textvariable=self.dbfs).pack(
             side='left', padx=5, pady=5)
@@ -5379,6 +5421,7 @@ class Packxx(Toplevel):
             side='left', padx=5, pady=5)
         self.ext4_method.trace('w', lambda *x: self.show_modify_size())
         create_thread(self.show_modify_size)
+        #
         Label(lf3, text=lang.text49).pack(side='left', padx=5, pady=5)
         ttk.Combobox(lf3, state="readonly", textvariable=self.dbgs, values=("raw", "sparse", "br", "dat")).pack(padx=5,
                                                                                                                 pady=5,
@@ -5389,12 +5432,14 @@ class Packxx(Toplevel):
         ttk.Checkbutton(lf2, text=lang.t35, variable=self.erofs_old_kernel, onvalue=True, offvalue=False,
                         style="Switch.TCheckbutton").pack(
             padx=5, pady=5, fill=BOTH)
+        # --
         scales_erofs = ttk.Scale(lf2, from_=0, to=9, orient="horizontal",
                                  command=lambda x: self.label_e.config(text=lang.t30.format(int(float(x)))),
                                  variable=self.scale_erofs)
         self.label_e = tk.Label(lf2, text=lang.t30.format(int(scales_erofs.get())))
         self.label_e.pack(side='left', padx=5, pady=5)
         scales_erofs.pack(fill="x", padx=5, pady=5)
+        # --
         scales = ttk.Scale(sf1, from_=0, to=9, orient="horizontal",
                            command=lambda x: self.label.config(text=lang.text47.format(int(float(x))) % "Brotli"),
                            variable=self.scale)
@@ -5442,12 +5487,16 @@ class Packxx(Toplevel):
 
     def start_(self):
         module_manager.addon_loader.run_entry(module_manager.addon_entries.packing)
+        # Теперь self.destroy() не вызовет ошибку, так как объект корректно инициализирован.
+        # Оборачиваем в try/except на случай, если окно уже было уничтожено другим способом.
         try:
             if self.winfo_exists():
                 self.destroy()
         except tk.TclError:
             logging.info("Packxx window was already destroyed.")
         except AttributeError:
+             # Этот блок может быть полезен, если start_() вызывается до завершения __init__.
+             # С нашим исправлением это маловероятно, но оставим для надежности.
             logging.exception('Bugs in Packxx.start_')
         self.packrom()
 
@@ -5516,6 +5565,7 @@ class Packxx(Toplevel):
         ttk.Button(ck, text=lang.ok, command=ck.destroy).pack(fill=X, side=BOTTOM)
         move_center(ck)
         ck.wait_window()
+
 
     @animation
     def packrom(self) -> bool:
@@ -6985,76 +7035,74 @@ class ParseCmdline:
 
 
 def __init__tk(args: list):
-    global win, current_project_name, theme, language, unpackg, project_menu
-    
+    if not os.path.exists(temp):
+        re_folder(temp, quiet=True)
+    if not os.path.exists(tool_log):
+        open(tool_log, 'w', encoding="utf-8", newline="\n").close()
+    logging.basicConfig(level=logging.DEBUG, format='%(levelname)s:%(asctime)s:%(filename)s:%(name)s:%(message)s',
+                        filename=tool_log, filemode='w')
+    global win
     win = Tool()
     if os.name == 'nt':
         set_title_bar_color(win)
-    
     animation.set_master(win)
-    
+    global current_project_name, theme, language
     current_project_name = utils.project_name = StringVar()
-    theme = StringVar()
-    language = StringVar()
-
+    
+    # --- НАЧАЛО ИЗМЕНЕНИЙ ---
+    # Привязываем глобальные объекты и функции из tool.py к модулю utils,
+    # чтобы другие модули (например, merge_sparse) могли их использовать.
     utils.settings = settings
     utils.lang = lang
     utils.call = call
     utils.warn_win = warn_win
     utils.info_win = info_win
-
+    # --- КОНЕЦ ИЗМЕНЕНИЙ ---
+    
+    theme = StringVar()
+    language = StringVar()
     settings.load()
     if settings.updating in ['1', '2']:
         Updater()
     if int(settings.oobe) < 5:
         Welcome()
     init_verify()
-
     try:
         win.winfo_exists()
     except TclError:
-        logging.exception('TclError during initial winfo_exists check. Aborting.')
+        logging.exception('TclError')
         return
-
     win.gui()
+    global unpackg
     unpackg = UnpackGui()
+    global project_menu
     project_menu = ProjectMenuUtils()
     project_menu.gui()
     project_menu.listdir()
     unpackg.gui()
     Frame3().gui()
-    
-    try:
-        gif_theme = "dark" if settings.theme == "dark" else "light"
-        animation.load_gif(open_img(BytesIO(getattr(images, f"loading_{gif_theme}_byte"))))
-        animation.init()
-    except Exception:
-        logging.exception("Failed to load animation GIF.")
-
+    animation.load_gif(open_img(BytesIO(getattr(images, f"loading_{win.list2.get()}_byte"))))
+    animation.init()
     if not is_pro:
         print(lang.text108)
-    if is_pro and not verify.state:
-        Active(verify, settings, win, images, lang).gui()
-
+    if is_pro:
+        if not verify.state:
+            Active(verify, settings, win, images, lang).gui()
     win.update()
+
     move_center(win)
     win.get_time()
-    
-    logging.info(f"MIO-KITCHEN initialized in {dti() - start:.2f} seconds.")
     print(lang.text134 % (dti() - start))
-
     if os.name == 'nt':
         do_override_sv_ttk_fonts()
         if sys.getwindowsversion().major <= 6:
             ask_win(lang.warn20)
-            
     states.inited = True
     win.protocol("WM_DELETE_WINDOW", exit_tool)
-    
     if len(args) > 1 and is_pro:
         win.after(1000, ParseCmdline, args[1:])
-        
     win.mainloop()
+
 
 # Cool Init
 # Miside 米塔
